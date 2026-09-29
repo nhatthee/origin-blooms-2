@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function ResourcesPage() {
   return (
     <>
-      <SiteChrome alwaysVisible />
+      <SiteChrome />
       <main>
         <section className="placeholder-page section-shell" aria-labelledby="resources-title">
           <p className="eyebrow">RESOURCES</p>

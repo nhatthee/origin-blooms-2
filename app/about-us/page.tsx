@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function OurStoryPage() {
   return (
     <>
-      <SiteChrome alwaysVisible />
+      <SiteChrome />
       <main>
         <section className="about-story section-shell" aria-labelledby="about-story-title">
           <div className="about-story-grid">

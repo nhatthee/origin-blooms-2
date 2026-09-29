@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default function ContactPage() {
   return (
     <>
-      <SiteChrome alwaysVisible />
+      <SiteChrome />
       <main>
         <section className="contact-page section-shell" aria-labelledby="contact-page-title">
           <div className="contact-page-intro">

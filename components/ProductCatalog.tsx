@@ -24,8 +24,12 @@ export function ProductCatalog({ products }: ProductCatalogProps) {
   return (
     <section
       className="products-catalog section-shell"
-      aria-label="Products"
+      aria-labelledby="products-title"
     >
+      <header className="products-intro">
+        <p className="eyebrow">GROWN IN THAILAND</p>
+        <h1 id="products-title">Made for What You Create.</h1>
+      </header>
       <div className="products-catalog-layout" id="product-catalog">
         <nav className="products-categories" aria-label="Product categories">
           {filters.map((item) => {

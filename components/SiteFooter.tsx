@@ -37,7 +37,6 @@ export function SiteFooter() {
         <h2 id="contact-title">
           Let&apos;s make something <em>beautiful.</em>
         </h2>
-        <p>Tell us about your floral needs and we&apos;ll start the conversation.</p>
         {contactEmail ? (
           <a
             className="button button-light"

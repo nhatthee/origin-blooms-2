@@ -15,7 +15,7 @@ export default function ProductsPage() {
   return (
     <>
       <ProductsPageScroll />
-      <SiteChrome alwaysVisible />
+      <SiteChrome />
       <main>
         <ProductCatalog products={orchids} />
       </main>

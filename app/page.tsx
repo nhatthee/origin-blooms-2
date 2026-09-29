@@ -24,7 +24,7 @@ const homeCardCopy: Record<
   "03": {
     title: "Our Growers",
     lead: "Rooted in the people behind the flowers.",
-    body: "Our story begins with growers in Thailand who know these orchids from the first signs of growth to harvest. Their care shapes every stem’s character and gives us something meaningful to share with you.",
+    body: "We work closely with our Thai grower network to select orchids that meet export quality standards. Careful harvesting, handling, and packing help each fresh-cut stem arrive in beautiful condition, ready for floral work.",
   },
 };
 
@@ -88,8 +88,22 @@ export default function Home() {
                     aria-label={copy.title}
                   >
                     <Image
-                      src={orchid.image}
-                      alt={orchid.name}
+                      src={
+                        orchid.number === "01"
+                          ? "/images/story/our-vision.png"
+                          : orchid.number === "02"
+                            ? "/images/story/packing-house.png"
+                            : orchid.number === "03"
+                              ? "/images/story/growers.png"
+                              : orchid.image
+                      }
+                      alt={
+                        orchid.number === "01" ||
+                        orchid.number === "02" ||
+                        orchid.number === "03"
+                          ? copy.title
+                          : orchid.name
+                      }
                       fill
                       sizes="(max-width: 760px) 92vw, 32vw"
                       className={`product-photo-media product-photo-media--${orchid.number}`}
@@ -126,7 +140,7 @@ export default function Home() {
             />
             <div className="story-stamp">ROOTED IN<br /><em>Thailand</em></div>
           </div>
-          <div className="story-copy"><h2 id="story-title">A little closer to<br /><em>the source.</em></h2><p>Beautiful floral work begins with the flowers themselves. We bring fresh-cut Dendrobium orchids directly from growers in Thailand to florists and event designers across the United States—keeping the connection to their origin at the heart of what we do.</p><a className="text-link" href="#contact">Start a conversation <Arrow diagonal /></a></div>
+          <div className="story-copy"><h2 id="story-title">The Hands Behind<br /><em>the Blooms</em></h2><p>Beautiful floral work begins with the flowers themselves. We bring fresh-cut Dendrobium orchids directly from growers in Thailand to florists and event designers across the United States—keeping the connection to their origin at the heart of what we do.</p><a className="text-link" href="#contact">Start a conversation <Arrow diagonal /></a></div>
         </section>
 
         <section className="process section-shell" id="process" aria-labelledby="process-title">

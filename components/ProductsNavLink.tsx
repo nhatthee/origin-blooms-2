@@ -4,6 +4,7 @@ import type { MouseEvent } from "react";
 
 type ProductsNavLinkProps = {
   className?: string;
+  "aria-current"?: "page";
 };
 
 function stickyChromeOffset() {
@@ -19,6 +20,7 @@ function stickyChromeOffset() {
   return 0;
 }
 
+/** Used only for legacy `/products#product-catalog` deep links. */
 export function scrollToProductCatalog(behavior: ScrollBehavior = "smooth") {
   const target = document.getElementById("product-catalog");
   if (!target) return false;
@@ -27,10 +29,6 @@ export function scrollToProductCatalog(behavior: ScrollBehavior = "smooth") {
   const top =
     window.scrollY + target.getBoundingClientRect().top - stickyChromeOffset() - gap;
   window.scrollTo({ top: Math.max(0, top), behavior });
-
-  if (window.location.pathname === "/products" && window.location.hash !== "#product-catalog") {
-    history.replaceState(null, "", "/products#product-catalog");
-  }
   return true;
 }
 
@@ -50,25 +48,32 @@ export function scrollToProducts(behavior: ScrollBehavior = "smooth") {
   return true;
 }
 
-export function ProductsNavLink({ className }: ProductsNavLinkProps) {
+function scrollProductsPageToTop(behavior: ScrollBehavior = "auto") {
+  if (window.location.hash) {
+    history.replaceState(null, "", "/products");
+  }
+  window.scrollTo({ top: 0, behavior });
+}
+
+export function ProductsNavLink({
+  className,
+  "aria-current": ariaCurrent,
+}: ProductsNavLinkProps) {
   const onClick = (event: MouseEvent<HTMLAnchorElement>) => {
     const path = window.location.pathname;
     const onProductsPage = path === "/products";
     const details = event.currentTarget.closest("details");
 
+    if (details instanceof HTMLDetailsElement) details.open = false;
+
     if (onProductsPage) {
       event.preventDefault();
-      if (details instanceof HTMLDetailsElement) details.open = false;
-      scrollToProductCatalog("smooth");
-      return;
+      scrollProductsPageToTop("smooth");
     }
-
-    // Navigate to /products; ProductsPageScroll aligns to the grid on load.
-    if (details instanceof HTMLDetailsElement) details.open = false;
   };
 
   return (
-    <a className={className} href="/products#product-catalog" onClick={onClick}>
+    <a className={className} href="/products" aria-current={ariaCurrent} onClick={onClick}>
       Products
     </a>
   );

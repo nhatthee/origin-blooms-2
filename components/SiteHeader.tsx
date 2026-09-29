@@ -1,4 +1,7 @@
+"use client";
+
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { ProductsNavLink } from "./ProductsNavLink";
 
 type SiteHeaderProps = {
@@ -6,7 +9,18 @@ type SiteHeaderProps = {
   homePage?: boolean;
 };
 
+function isCurrentPath(pathname: string, href: string) {
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function pageCurrent(pathname: string, href: string): "page" | undefined {
+  return isCurrentPath(pathname, href) ? "page" : undefined;
+}
+
 export function SiteHeader({ homePage = false }: SiteHeaderProps) {
+  const pathname = usePathname() || "/";
+
   return (
     <header className="site-header" id={homePage ? "top" : undefined}>
       <a className="logo" href="/" aria-label="Origin Blooms home">
@@ -21,13 +35,21 @@ export function SiteHeader({ homePage = false }: SiteHeaderProps) {
         />
       </a>
       <nav className="desktop-nav" aria-label="Main navigation">
-        <a href="/">Home</a>
-        <ProductsNavLink />
-        <a href="/our-story">About Us</a>
-        <a href="/contact">Contact</a>
-        <a href="/resources">Resources</a>
+        <a href="/" aria-current={pageCurrent(pathname, "/")}>
+          Home
+        </a>
+        <ProductsNavLink aria-current={pageCurrent(pathname, "/products")} />
+        <a href="/about-us" aria-current={pageCurrent(pathname, "/about-us")}>
+          About Us
+        </a>
+        <a href="/contact" aria-current={pageCurrent(pathname, "/contact")}>
+          Contact
+        </a>
+        <a href="/resources" aria-current={pageCurrent(pathname, "/resources")}>
+          Resources
+        </a>
       </nav>
-      <a className="header-cta" href="/login">
+      <a className="header-cta" href="/login" aria-current={pageCurrent(pathname, "/login")}>
         Login
       </a>
       <details className="mobile-menu">
@@ -35,12 +57,22 @@ export function SiteHeader({ homePage = false }: SiteHeaderProps) {
           Menu <span aria-hidden="true">☰</span>
         </summary>
         <nav aria-label="Mobile navigation">
-          <a href="/">Home</a>
-          <ProductsNavLink />
-          <a href="/our-story">About Us</a>
-          <a href="/contact">Contact</a>
-          <a href="/resources">Resources</a>
-          <a href="/login">Login</a>
+          <a href="/" aria-current={pageCurrent(pathname, "/")}>
+            Home
+          </a>
+          <ProductsNavLink aria-current={pageCurrent(pathname, "/products")} />
+          <a href="/about-us" aria-current={pageCurrent(pathname, "/about-us")}>
+            About Us
+          </a>
+          <a href="/contact" aria-current={pageCurrent(pathname, "/contact")}>
+            Contact
+          </a>
+          <a href="/resources" aria-current={pageCurrent(pathname, "/resources")}>
+            Resources
+          </a>
+          <a href="/login" aria-current={pageCurrent(pathname, "/login")}>
+            Login
+          </a>
         </nav>
       </details>
     </header>

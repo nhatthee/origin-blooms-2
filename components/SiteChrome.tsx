@@ -18,12 +18,12 @@ export function SiteChrome({ homePage = false, alwaysVisible = false }: SiteChro
   const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
-    // iOS Safari can keep a stale status-bar sample after client navigations
-    // (Home ↔ alwaysVisible pages). Re-assert the light theme-color.
+    // iOS Safari can keep a stale status-bar / overscroll sample after client
+    // navigations. Re-assert white so pull-to-refresh stays #FFFFFF.
     const metas = document.querySelectorAll('meta[name="theme-color"]');
     metas.forEach((node) => {
       if (!(node instanceof HTMLMetaElement)) return;
-      node.setAttribute("content", "#F5F0F6");
+      node.setAttribute("content", "#FFFFFF");
     });
 
     if (alwaysVisible) {
