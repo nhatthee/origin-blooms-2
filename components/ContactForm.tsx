@@ -92,9 +92,8 @@ function ContactFormInner() {
           interestedIn: base.interestedIn || summary.interestedIn,
         };
       });
-      setInquiryNotice(
-        "Your inquiry list is filled in below. Review it before submitting.",
-      );
+      // Header on /contact?from=inquiry already shows this guidance — avoid a duplicate notice.
+      setInquiryNotice("");
       prefilledRef.current = true;
       return;
     }
@@ -270,10 +269,13 @@ function ContactFormInner() {
   if (step === "review") {
     return (
       <div className="inquiry-review" aria-labelledby="inquiry-review-title">
-        <header className="inquiry-review-intro">
-          <p className="eyebrow">REVIEW YOUR INQUIRY</p>
-          <h2 id="inquiry-review-title">Confirm before sending</h2>
-          <p className="inquiry-review-lead">
+        <header className="contact-page-intro">
+          <p className="eyebrow">
+            <span className="eyebrow-line" aria-hidden="true" />
+            REVIEW YOUR INQUIRY
+          </p>
+          <h1 id="inquiry-review-title">Confirm before sending</h1>
+          <p className="contact-page-lead">
             This is a quote request only — no payment and no purchase commitment. Check
             the details below, then confirm to send.
           </p>
@@ -457,14 +459,41 @@ function ContactFormInner() {
   }
 
   return (
-    <form
-      ref={formRef}
-      className="contact-form"
-      method="post"
-      onSubmit={handleSubmitForReview}
-      noValidate
-      aria-describedby={status === "error" ? `${formId}-error` : undefined}
-    >
+    <>
+      <div className="contact-page-intro">
+        {fromInquiry ? (
+          <>
+            <p className="eyebrow">
+              <span className="eyebrow-line" aria-hidden="true" />
+              REQUEST A QUOTE
+            </p>
+            <h1 id="contact-page-title">Your inquiry, almost ready.</h1>
+            <p className="contact-page-lead">
+              Your inquiry list is filled in below. Review it before submitting.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="eyebrow">
+              <span className="eyebrow-line" aria-hidden="true" />
+              WHOLESALE INQUIRY
+            </p>
+            <h1 id="contact-page-title">Let&apos;s talk orchids.</h1>
+            <p className="contact-page-lead">
+              Tell us what you&apos;re looking for, and we&apos;ll get back to you.
+            </p>
+          </>
+        )}
+      </div>
+
+      <form
+        ref={formRef}
+        className="contact-form"
+        method="post"
+        onSubmit={handleSubmitForReview}
+        noValidate
+        aria-describedby={status === "error" ? `${formId}-error` : undefined}
+      >
       {inquiryNotice ? (
         <p className="contact-inquiry-notice" role="status">
           {inquiryNotice}
@@ -691,6 +720,7 @@ function ContactFormInner() {
         ) : null}
       </div>
     </form>
+    </>
   );
 }
 

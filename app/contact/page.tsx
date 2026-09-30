@@ -14,17 +14,8 @@ export default function ContactPage() {
     <>
       <SiteChrome />
       <main>
-        <section className="contact-page section-shell" aria-labelledby="contact-page-title">
-          <div className="contact-page-intro">
-            <p className="eyebrow">
-              <span className="eyebrow-line" aria-hidden="true" />
-              WHOLESALE INQUIRY
-            </p>
-            <h1 id="contact-page-title">Let&apos;s talk orchids.</h1>
-            <p className="contact-page-lead">
-              Tell us what you&apos;re looking for, and we&apos;ll get back to you.
-            </p>
-          </div>
+        <section className="contact-page section-shell" aria-label="Contact">
+          {/* Intro is rendered inside ContactForm so it hides on Confirm / success. */}
           <ContactForm />
         </section>
       </main>

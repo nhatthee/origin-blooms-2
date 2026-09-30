@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import {
   UNKNOWN_DETAIL,
@@ -8,7 +9,7 @@ import {
   familyLabel,
   formatLabel,
   packingLines,
-  productsHrefFromQuery,
+  productsHref,
   type OrchidProduct,
   type ProductFamily,
   type ProductFormat,
@@ -30,7 +31,7 @@ function initialSizeQuantities(sizeIds: string[]): Record<string, string> {
   return Object.fromEntries(sizeIds.map((id) => [id, "0"]));
 }
 
-export function ProductDetail({ product, catalogQuery }: ProductDetailProps) {
+export function ProductDetail({ product }: ProductDetailProps) {
   const { addItem, addStemSizeQuantities } = useInquiry();
   const formId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -55,8 +56,9 @@ export function ProductDetail({ product, catalogQuery }: ProductDetailProps) {
 
   const activeImage = images[activeIndex] ?? images[0];
   const orderReady = canAddToInquiry(product);
-  const backHref = productsHrefFromQuery(catalogQuery);
   const packing = packingLines(product);
+  const formatCrumbHref = productsHref(product.format);
+  const familyCrumbHref = productsHref(product.format, product.family);
 
   useEffect(() => {
     if (!lightboxOpen) return;
@@ -128,11 +130,11 @@ export function ProductDetail({ product, catalogQuery }: ProductDetailProps) {
   return (
     <section className="product-detail section-shell" aria-labelledby="product-detail-title">
       <nav className="product-breadcrumb" aria-label="Breadcrumb">
-        <a href={backHref}>Products</a>
+        <Link href="/products">Products</Link>
         <span aria-hidden="true">/</span>
-        <span>{formatLabel(catalogQuery.format)}</span>
+        <Link href={formatCrumbHref}>{formatLabel(product.format)}</Link>
         <span aria-hidden="true">/</span>
-        <span>{familyLabel(catalogQuery.family)}</span>
+        <Link href={familyCrumbHref}>{familyLabel(product.family)}</Link>
         <span aria-hidden="true">/</span>
         <span aria-current="page">{product.name}</span>
       </nav>
