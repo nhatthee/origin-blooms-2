@@ -10,17 +10,17 @@ import {
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import type { OrchidProduct } from "../data/orchids";
 
-type HomeCardCopy = {
+export type HomeStoryCard = {
+  id: string;
   title: string;
   lead: string;
   body: string;
+  imageSrc: string;
 };
 
 type HomeProductsCarouselProps = {
-  products: OrchidProduct[];
-  copyByNumber: Record<string, HomeCardCopy>;
+  cards: HomeStoryCard[];
 };
 
 const MOBILE_MQ = "(max-width: 760px)";
@@ -69,21 +69,14 @@ function ChevronNextIcon() {
   );
 }
 
-function cardImage(orchid: OrchidProduct, title: string): { src: string; alt: string } {
-  if (orchid.number === "01") return { src: "/images/story/our-vision.png", alt: title };
-  if (orchid.number === "02") return { src: "/images/story/packing-house.png", alt: title };
-  if (orchid.number === "03") return { src: "/images/story/growers.png", alt: title };
-  return { src: orchid.image, alt: orchid.name };
-}
-
-export function HomeProductsCarousel({ products, copyByNumber }: HomeProductsCarouselProps) {
+export function HomeProductsCarousel({ cards }: HomeProductsCarouselProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const activeIndexRef = useRef(0);
   const loopingRef = useRef(false);
   const jumpingRef = useRef(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [looping, setLooping] = useState(false);
-  const cardCount = products.length;
+  const cardCount = cards.length;
 
   const getCards = useCallback(() => {
     const scroller = scrollerRef.current;
@@ -324,57 +317,49 @@ export function HomeProductsCarousel({ products, copyByNumber }: HomeProductsCar
           ref={scrollerRef}
         >
           {sets.map((setIndex) =>
-            products.map((orchid, logicalIndex) => {
-              const copy = copyByNumber[orchid.number];
-              if (!copy) return null;
-              const image = cardImage(orchid, copy.title);
-              return (
-                <article
-                  className="product-card product-card--panel"
-                  key={`${setIndex}-${orchid.number}`}
-                  data-logical-index={logicalIndex}
-                >
-                  <div className="product-photo photo-slot has-photo">
-                    <Image
-                      src={image.src}
-                      alt={image.alt}
-                      fill
-                      sizes="(max-width: 760px) 92vw, 32vw"
-                      className={`product-photo-media product-photo-media--${orchid.number}`}
-                    />
-                  </div>
-                  <div className="product-info">
-                    <div className="product-copy">
-                      <div className="product-title-row">
-                        <h3>{copy.title}</h3>
-                      </div>
-                      <p className="product-lead">
-                        <em>{copy.lead}</em>
-                      </p>
-                      <p className="product-body">{copy.body}</p>
+            cards.map((card, logicalIndex) => (
+              <article
+                className="product-card product-card--panel"
+                key={`${setIndex}-${card.id}`}
+                data-logical-index={logicalIndex}
+              >
+                <div className="product-photo photo-slot has-photo">
+                  <Image
+                    src={card.imageSrc}
+                    alt={card.title}
+                    fill
+                    sizes="(max-width: 760px) 92vw, 32vw"
+                    className={`product-photo-media product-photo-media--${card.id}`}
+                  />
+                </div>
+                <div className="product-info">
+                  <div className="product-copy">
+                    <div className="product-title-row">
+                      <h3>{card.title}</h3>
                     </div>
+                    <p className="product-lead">
+                      <em>{card.lead}</em>
+                    </p>
+                    <p className="product-body">{card.body}</p>
                   </div>
-                </article>
-              );
-            }),
+                </div>
+              </article>
+            )),
           )}
         </div>
       </div>
       <div className="home-products-dots" role="tablist" aria-label="Home story cards">
-        {products.map((orchid, index) => {
-          const copy = copyByNumber[orchid.number];
-          return (
-            <button
-              key={orchid.number}
-              type="button"
-              role="tab"
-              aria-label={copy ? `Go to ${copy.title}` : `Go to card ${index + 1}`}
-              aria-selected={index === activeIndex}
-              className={`home-products-dot${index === activeIndex ? " is-active" : ""}`}
-              onClick={() => goToLogical(index)}
-            />
-          );
-        })}
+        {cards.map((card, index) => (
+          <button
+            key={card.id}
+            type="button"
+            role="tab"
+            aria-label={`Go to ${card.title}`}
+            aria-selected={index === activeIndex}
+            className={`home-products-dot${index === activeIndex ? " is-active" : ""}`}
+            onClick={() => goToLogical(index)}
+          />
+        ))}
       </div>
     </div>
   );

@@ -4,30 +4,34 @@ import { HomeProductsCarousel } from "../components/HomeProductsCarousel";
 import { ProductsHashScroll } from "../components/ProductsHashScroll";
 import { SiteChrome } from "../components/SiteChrome";
 import { SiteFooter } from "../components/SiteFooter";
-import { orchids } from "../data/orchids";
 
-const homeOrchids = orchids.filter((orchid) => orchid.number !== "04");
-
-const homeCardCopy: Record<
-  string,
-  { title: string; lead: string; body: string }
-> = {
-  "01": {
+/**
+ * Home story cards — kept independent from catalog product codes (SN, BWF, …).
+ * Copy and images are the existing Vision / Packing House / Growers content.
+ */
+const homeStoryCards = [
+  {
+    id: "01",
     title: "Our Vision",
     lead: "Beauty begins at the source.",
     body: "We believe a flower’s story matters as much as the moment it creates. From Thai farms to floral professionals across the United States, we give every Dendrobium orchid a new place to inspire.",
+    imageSrc: "/images/story/our-vision.png",
   },
-  "02": {
+  {
+    id: "02",
     title: "Packing House",
     lead: "Care between the farm and the destination.",
     body: "After harvest, the orchids are selected, prepared, and packed for their journey. Each step matters: protecting the blooms, preserving their beauty, and helping them arrive ready for the hands that will create with them.",
+    imageSrc: "/images/story/packing-house.png",
   },
-  "03": {
+  {
+    id: "03",
     title: "Our Growers",
     lead: "Rooted in the people behind the flowers.",
     body: "We work closely with our Thai grower network to select orchids that meet export quality standards. Careful harvesting, handling, and packing help each fresh-cut stem arrive in beautiful condition, ready for floral work.",
+    imageSrc: "/images/story/growers.png",
   },
-};
+];
 
 export default function Home() {
   return (
@@ -77,7 +81,7 @@ export default function Home() {
         </div>
 
         <section className="collection section-shell" id="collection" aria-label="Products">
-          <HomeProductsCarousel products={homeOrchids} copyByNumber={homeCardCopy} />
+          <HomeProductsCarousel cards={homeStoryCards} />
         </section>
 
         <section className="story" id="story" aria-labelledby="story-title">
