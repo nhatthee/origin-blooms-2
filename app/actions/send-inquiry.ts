@@ -120,6 +120,9 @@ function buildCustomerAckText(
   hasAttachment: boolean,
 ): string {
   const lines = [
+    "Origin Blooms",
+    "https://www.originblooms.com/",
+    "",
     ACK_INTRO,
     ...(hasAttachment ? ["", ACK_ATTACHMENT_NOTE] : []),
     "",
@@ -209,13 +212,20 @@ function buildCustomerAckHtml(
     <div style="margin:0;padding:0;background:#ffffff;">
       <div style="max-width:560px;margin:0 auto;padding:32px 24px;background:#ffffff;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.7;color:${BRAND_INK};">
         <div style="margin:0 0 20px;">
-          <img
-            src="${escapeHtml(emailLogoUrl())}"
-            alt="Origin Blooms"
-            width="${EMAIL_LOGO_WIDTH}"
-            height="${EMAIL_LOGO_HEIGHT}"
-            style="display:block;border:0;outline:none;text-decoration:none;width:${EMAIL_LOGO_WIDTH}px;max-width:100%;height:auto;"
-          />
+          <a
+            href="https://www.originblooms.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            style="display:inline-block;text-decoration:none;"
+          >
+            <img
+              src="${escapeHtml(emailLogoUrl())}"
+              alt="Origin Blooms"
+              width="${EMAIL_LOGO_WIDTH}"
+              height="${EMAIL_LOGO_HEIGHT}"
+              style="display:block;border:0;outline:none;text-decoration:none;width:${EMAIL_LOGO_WIDTH}px;max-width:100%;height:auto;"
+            />
+          </a>
         </div>
         <p style="margin:0 0 16px;">
           ${escapeHtml(ACK_INTRO)}
