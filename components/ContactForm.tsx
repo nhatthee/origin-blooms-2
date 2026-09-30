@@ -1,46 +1,135 @@
 "use client";
 
-import { useId, useRef, useState, useTransition, type FormEvent } from "react";
+import Image from "next/image";
+import {
+  Suspense,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useTransition,
+  type FormEvent,
+} from "react";
+import { useSearchParams } from "next/navigation";
 import { sendInquiry } from "../app/actions/send-inquiry";
 import {
   CONTACT_LIMITS,
+  EMPTY_CONTACT_VALUES,
   INTEREST_OPTIONS,
+  clearContactDraft,
+  contactValuesToFormData,
+  readContactDraft,
+  writeContactDraft,
   type ContactActionResult,
   type ContactFieldErrors,
+  type ContactFormValues,
 } from "../lib/contact";
+import { formatInquirySummary, groupInquiryByProduct, totalStems, totalsByUnit } from "../lib/inquiry";
 import { Arrow } from "./Arrow";
+import { useInquiry } from "./InquiryProvider";
 
-type FormStatus = "idle" | "submitting" | "success" | "error";
+type FormStatus = "idle" | "submitting" | "error";
+type Step = "form" | "review" | "success";
 
-const INITIAL_VALUES = {
-  name: "",
-  businessName: "",
-  email: "",
-  phone: "",
-  interestedIn: "",
-  quantity: "",
-  deliveryLocation: "",
-  neededBy: "",
-  message: "",
-  website: "",
-};
+function displayOrDash(value: string) {
+  const trimmed = value.trim();
+  return trimmed ? trimmed : "—";
+}
 
-export function ContactForm() {
+function ContactFormInner() {
   const formId = useId();
   const formRef = useRef<HTMLFormElement>(null);
-  const [values, setValues] = useState(INITIAL_VALUES);
+  const searchParams = useSearchParams();
+  const { items, ready, clear: clearInquiry } = useInquiry();
+  const prefilledRef = useRef(false);
+  const draftLoadedRef = useRef(false);
+  const reviewRequiresProductsRef = useRef(false);
+  const [step, setStep] = useState<Step>("form");
+  const [values, setValues] = useState<ContactFormValues>(EMPTY_CONTACT_VALUES);
   const [fieldErrors, setFieldErrors] = useState<ContactFieldErrors>({});
   const [status, setStatus] = useState<FormStatus>("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [inquiryNotice, setInquiryNotice] = useState("");
 
   const submitting = status === "submitting" || isPending;
+  const fromInquiry = searchParams.get("from") === "inquiry";
+  const unitTotals = totalsByUnit(items);
+  const productGroups = groupInquiryByProduct(items);
+  const stemsGrandTotal = totalStems(items);
+  const reviewBlockedEmpty =
+    step === "review" &&
+    items.length === 0 &&
+    (reviewRequiresProductsRef.current || fromInquiry);
 
-  function updateField<K extends keyof typeof INITIAL_VALUES>(
+  useEffect(() => {
+    if (draftLoadedRef.current) return;
+    draftLoadedRef.current = true;
+    const draft = readContactDraft();
+    if (draft && (draft.name || draft.email || draft.message)) {
+      setValues(draft);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!ready || prefilledRef.current) return;
+
+    const variety = searchParams.get("variety")?.trim() ?? "";
+    const existingDraft = readContactDraft();
+
+    if (fromInquiry && items.length > 0) {
+      const summary = formatInquirySummary(items);
+      setValues((prev) => {
+        const base = existingDraft ?? prev;
+        return {
+          ...base,
+          message: base.message.trim()
+            ? base.message
+            : summary.message.slice(0, CONTACT_LIMITS.message),
+          quantity: base.quantity.trim()
+            ? base.quantity
+            : summary.quantity.slice(0, CONTACT_LIMITS.quantity),
+          interestedIn: base.interestedIn || summary.interestedIn,
+        };
+      });
+      setInquiryNotice(
+        "Your inquiry list is filled in below. Review it before submitting.",
+      );
+      prefilledRef.current = true;
+      return;
+    }
+
+    if (variety && !existingDraft?.message.trim()) {
+      setValues((prev) => ({
+        ...prev,
+        message: `I’d like more information about ${variety}.`.slice(
+          0,
+          CONTACT_LIMITS.message,
+        ),
+      }));
+      setInquiryNotice(`Inquiry started for ${variety}.`);
+      prefilledRef.current = true;
+    }
+  }, [ready, items, searchParams, fromInquiry]);
+
+  useEffect(() => {
+    if (step !== "review") return;
+    if (!reviewBlockedEmpty) return;
+    setStatus("error");
+    setErrorMessage(
+      "Your inquiry list is empty. Add products before confirming, or go back to edit your request.",
+    );
+  }, [step, reviewBlockedEmpty]);
+
+  function updateField<K extends keyof ContactFormValues>(
     key: K,
-    value: (typeof INITIAL_VALUES)[K],
+    value: ContactFormValues[K],
   ) {
-    setValues((prev) => ({ ...prev, [key]: value }));
+    setValues((prev) => {
+      const next = { ...prev, [key]: value };
+      writeContactDraft(next);
+      return next;
+    });
     if (key !== "website" && fieldErrors[key as keyof ContactFieldErrors]) {
       setFieldErrors((prev) => {
         const next = { ...prev };
@@ -65,9 +154,10 @@ export function ContactForm() {
     return Object.keys(errors).length > 0 ? errors : null;
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmitForReview(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErrorMessage("");
+    setStatus("idle");
 
     const clientErrors = validateClient();
     if (clientErrors) {
@@ -77,9 +167,52 @@ export function ContactForm() {
       return;
     }
 
-    const formData = new FormData(event.currentTarget);
+    setFieldErrors({});
+    writeContactDraft(values);
+    reviewRequiresProductsRef.current = items.length > 0 || fromInquiry;
+    setStep("review");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function handleEditInquiry() {
+    setStatus("idle");
+    setErrorMessage("");
+    setStep("form");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function handleConfirmSend() {
+    if (submitting) return;
+
+    if (reviewRequiresProductsRef.current || fromInquiry) {
+      if (items.length === 0) {
+        setStatus("error");
+        setErrorMessage(
+          "Your inquiry list is empty. Add products before confirming, or go back to edit your request.",
+        );
+        return;
+      }
+    }
+
+    setErrorMessage("");
     setStatus("submitting");
     setFieldErrors({});
+
+    const formData = contactValuesToFormData(values);
+    formData.set(
+      "inquiryItems",
+      JSON.stringify(
+        items.map((item) => ({
+          slug: item.slug,
+          optionKey: item.optionKey,
+          quantity: item.quantity,
+          unit: item.unit,
+        })),
+      ),
+    );
+    if (reviewRequiresProductsRef.current || fromInquiry) {
+      formData.set("requireInquiryItems", "1");
+    }
 
     startTransition(async () => {
       let result: ContactActionResult;
@@ -94,16 +227,233 @@ export function ContactForm() {
       }
 
       if (result.ok) {
-        setStatus("success");
-        setValues(INITIAL_VALUES);
-        formRef.current?.reset();
+        clearContactDraft();
+        clearInquiry();
+        setValues(EMPTY_CONTACT_VALUES);
+        setStatus("idle");
+        setStep("success");
+        window.scrollTo({ top: 0, behavior: "smooth" });
         return;
       }
 
+      // Keep form + inquiry data for retry — never show success or clear list.
       setStatus("error");
       setFieldErrors(result.fieldErrors ?? {});
       setErrorMessage(result.error);
+      if (result.fieldErrors) {
+        setStep("form");
+      }
     });
+  }
+
+  if (step === "success") {
+    return (
+      <div className="inquiry-thanks" role="status">
+        <p className="eyebrow">INQUIRY SENT</p>
+        <h2 className="inquiry-thanks-title">Thank you</h2>
+        <p className="inquiry-thanks-body">
+          Your wholesale inquiry was sent. We&apos;ll review your request and get back to
+          you soon. This is a quote request — not an order confirmation.
+        </p>
+        <div className="inquiry-review-actions">
+          <a className="button button-primary" href="/products?format=cut">
+            Back to products
+          </a>
+          <a className="button button-secondary" href="/">
+            Home
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === "review") {
+    return (
+      <div className="inquiry-review" aria-labelledby="inquiry-review-title">
+        <header className="inquiry-review-intro">
+          <p className="eyebrow">REVIEW YOUR INQUIRY</p>
+          <h2 id="inquiry-review-title">Confirm before sending</h2>
+          <p className="inquiry-review-lead">
+            This is a quote request only — no payment and no purchase commitment. Check
+            the details below, then confirm to send.
+          </p>
+        </header>
+
+        <section className="inquiry-review-section" aria-labelledby="review-products-title">
+          <h3 id="review-products-title">Selected varieties</h3>
+          {items.length === 0 ? (
+            <p className="inquiry-review-empty" role="status">
+              {reviewBlockedEmpty ? (
+                <>
+                  Your inquiry list is empty.{" "}
+                  <a href="/products">Browse products</a> to add varieties, or go back to
+                  edit your request. Confirm is disabled until items are added.
+                </>
+              ) : (
+                <>
+                  No varieties were added from the product list. Your estimated quantity
+                  and message below will still be included.
+                </>
+              )}
+            </p>
+          ) : (
+            <ul className="inquiry-review-list">
+              {productGroups.map((group) => (
+                <li className="inquiry-review-item inquiry-review-item-group" key={group.slug}>
+                  <div className="inquiry-review-photo">
+                    <Image
+                      src={group.image}
+                      alt=""
+                      width={96}
+                      height={96}
+                      className="inquiry-review-media"
+                    />
+                  </div>
+                  <div className="inquiry-review-item-copy">
+                    <p className="inquiry-review-name">{group.name}</p>
+                    <p className="inquiry-review-meta">{group.category}</p>
+                    <ul className="inquiry-review-size-list">
+                      {group.lines.map((item) => (
+                        <li key={item.id}>
+                          {item.sizeLabel && item.lengthRange ? (
+                            <>
+                              <span>
+                                {item.sizeLabel} ({item.lengthRange})
+                              </span>
+                              <strong>
+                                {item.quantity} {item.unit}
+                              </strong>
+                            </>
+                          ) : (
+                            <>
+                              <span>{item.optionLabel || "Quantity"}</span>
+                              <strong>
+                                {item.quantity} {item.unit}
+                              </strong>
+                            </>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                    {group.stemTotal > 0 ? (
+                      <p className="inquiry-review-product-total">
+                        Product total: {group.stemTotal} stems
+                      </p>
+                    ) : null}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {stemsGrandTotal > 0 ? (
+            <p className="inquiry-review-stems-total">
+              Total stems: <strong>{stemsGrandTotal}</strong>
+            </p>
+          ) : null}
+
+          {unitTotals.length > 0 ? (
+            <div className="inquiry-review-totals">
+              <h4>Totals by unit</h4>
+              <ul>
+                {unitTotals.map((row) => (
+                  <li key={row.unit}>
+                    <span>{row.unit}</span>
+                    <strong>
+                      {row.total} {row.unit}
+                    </strong>
+                  </li>
+                ))}
+              </ul>
+              <p className="inquiry-review-totals-note">
+                Totals are listed separately by unit — stems, bunches, packs, and boxes
+                are never combined into one number.
+              </p>
+            </div>
+          ) : null}
+        </section>
+
+        <section className="inquiry-review-section" aria-labelledby="review-contact-title">
+          <h3 id="review-contact-title">Contact & request details</h3>
+          <dl className="inquiry-review-details">
+            <div>
+              <dt>Name</dt>
+              <dd>{displayOrDash(values.name)}</dd>
+            </div>
+            <div>
+              <dt>Business name</dt>
+              <dd>{displayOrDash(values.businessName)}</dd>
+            </div>
+            <div>
+              <dt>Email</dt>
+              <dd>{displayOrDash(values.email)}</dd>
+            </div>
+            <div>
+              <dt>Phone</dt>
+              <dd>{displayOrDash(values.phone)}</dd>
+            </div>
+            <div>
+              <dt>Interested in</dt>
+              <dd>{displayOrDash(values.interestedIn)}</dd>
+            </div>
+            <div>
+              <dt>Estimated quantity</dt>
+              <dd>{displayOrDash(values.quantity)}</dd>
+            </div>
+            <div>
+              <dt>Delivery location</dt>
+              <dd>{displayOrDash(values.deliveryLocation)}</dd>
+            </div>
+            <div>
+              <dt>Needed by</dt>
+              <dd>{displayOrDash(values.neededBy)}</dd>
+            </div>
+            <div className="inquiry-review-details-full">
+              <dt>Message</dt>
+              <dd className="inquiry-review-message">{displayOrDash(values.message)}</dd>
+            </div>
+          </dl>
+        </section>
+
+        {status === "error" && errorMessage ? (
+          <p className="contact-status contact-status-error" role="alert">
+            {errorMessage}
+          </p>
+        ) : null}
+
+        <div className="inquiry-review-actions">
+          <button
+            type="button"
+            className="button button-secondary"
+            onClick={handleEditInquiry}
+            disabled={submitting}
+          >
+            Edit inquiry
+          </button>
+          <button
+            type="button"
+            className="button button-primary"
+            onClick={handleConfirmSend}
+            disabled={submitting || reviewBlockedEmpty}
+          >
+            {submitting ? "Sending…" : "Confirm & send inquiry"}
+            {!submitting ? <Arrow /> : null}
+          </button>
+        </div>
+        {items.length > 0 ? (
+          <p className="inquiry-review-edit-products">
+            Need to change varieties or quantities?{" "}
+            <a href="/inquiry">Edit product list</a>
+          </p>
+        ) : reviewBlockedEmpty ? (
+          <p className="inquiry-review-edit-products">
+            <a href="/inquiry">Open inquiry list</a>
+            {" · "}
+            <a href="/products">Browse products</a>
+          </p>
+        ) : null}
+      </div>
+    );
   }
 
   return (
@@ -111,16 +461,16 @@ export function ContactForm() {
       ref={formRef}
       className="contact-form"
       method="post"
-      onSubmit={handleSubmit}
+      onSubmit={handleSubmitForReview}
       noValidate
-      aria-describedby={
-        status === "success"
-          ? `${formId}-success`
-          : status === "error"
-            ? `${formId}-error`
-            : undefined
-      }
+      aria-describedby={status === "error" ? `${formId}-error` : undefined}
     >
+      {inquiryNotice ? (
+        <p className="contact-inquiry-notice" role="status">
+          {inquiryNotice}
+        </p>
+      ) : null}
+
       <div className="contact-form-grid">
         <div className="contact-field">
           <label htmlFor={`${formId}-name`}>
@@ -306,7 +656,6 @@ export function ContactForm() {
         </div>
       </div>
 
-      {/* Honeypot — off-screen; bots may fill it, humans should not */}
       <div className="contact-honeypot" aria-hidden="true">
         <label htmlFor={`${formId}-website`}>Website</label>
         <input
@@ -326,8 +675,8 @@ export function ContactForm() {
           type="submit"
           disabled={submitting}
         >
-          {submitting ? "Sending…" : "Send inquiry"}
-          {!submitting ? <Arrow /> : null}
+          Submit inquiry
+          <Arrow />
         </button>
         <p className="contact-required-note">
           <span className="contact-required" aria-hidden="true">*</span> Required fields
@@ -335,11 +684,6 @@ export function ContactForm() {
       </div>
 
       <div className="contact-form-status" aria-live="polite">
-        {status === "success" ? (
-          <p id={`${formId}-success`} className="contact-status contact-status-success" role="status">
-            Thanks — your inquiry was sent. We’ll get back to you soon.
-          </p>
-        ) : null}
         {status === "error" && errorMessage ? (
           <p id={`${formId}-error`} className="contact-status contact-status-error" role="alert">
             {errorMessage}
@@ -347,5 +691,13 @@ export function ContactForm() {
         ) : null}
       </div>
     </form>
+  );
+}
+
+export function ContactForm() {
+  return (
+    <Suspense fallback={null}>
+      <ContactFormInner />
+    </Suspense>
   );
 }

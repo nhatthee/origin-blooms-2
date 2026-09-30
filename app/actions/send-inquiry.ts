@@ -6,6 +6,14 @@ import {
   validateContactInquiry,
   type ContactActionResult,
 } from "../../lib/contact";
+import { buildInquiryExcelAttachment } from "../../lib/exportInquiryExcel";
+import {
+  formatInquiryLine,
+  formatInquirySummary,
+  parseInquiryItemsFormField,
+  totalsByUnit,
+  type InquiryItem,
+} from "../../lib/inquiry";
 
 const SALES_INBOX = "sales@originblooms.com";
 
@@ -26,6 +34,13 @@ function row(label: string, value: string): string {
   </tr>`;
 }
 
+function formatItemsForEmail(items: InquiryItem[]): string {
+  if (items.length === 0) return "";
+  const lines = items.map((item) => `• ${formatInquiryLine(item)}`);
+  const unitLines = totalsByUnit(items).map((entry) => `• ${entry.total} ${entry.unit}`);
+  return ["Selected varieties:", ...lines, "", "Totals by unit:", ...unitLines].join("\n");
+}
+
 export async function sendInquiry(formData: FormData): Promise<ContactActionResult> {
   const input = parseContactFormData(formData);
 
@@ -40,6 +55,22 @@ export async function sendInquiry(formData: FormData): Promise<ContactActionResu
       ok: false,
       error: "Please check the highlighted fields and try again.",
       fieldErrors,
+    };
+  }
+
+  const inquiryParse = parseInquiryItemsFormField(formData.get("inquiryItems"));
+  if (!inquiryParse.ok) {
+    return { ok: false, error: inquiryParse.error };
+  }
+
+  const inquiryItems = inquiryParse.items.filter((item) => item.quantity > 0);
+  const requireInquiryItems = formData.get("requireInquiryItems") === "1";
+
+  if (requireInquiryItems && inquiryItems.length === 0) {
+    return {
+      ok: false,
+      error:
+        "Your inquiry list is empty. Add products before confirming, or go back to edit your request.",
     };
   }
 
@@ -58,10 +89,14 @@ export async function sendInquiry(formData: FormData): Promise<ContactActionResu
     };
   }
 
+  const submittedAt = new Date();
+  const summary = formatInquirySummary(inquiryItems);
+  const itemsBlock = formatItemsForEmail(inquiryItems);
+
   const subjectParts = [
     "Wholesale inquiry",
     input.businessName || input.name,
-    input.interestedIn || null,
+    input.interestedIn || summary.interestedIn || null,
   ].filter(Boolean);
 
   const textBody = [
@@ -70,13 +105,38 @@ export async function sendInquiry(formData: FormData): Promise<ContactActionResu
     `Email: ${input.email}`,
     `Phone: ${input.phone || "—"}`,
     `Interested in: ${input.interestedIn || "—"}`,
-    `Estimated quantity: ${input.quantity || "—"}`,
+    `Estimated quantity: ${input.quantity || summary.quantity || "—"}`,
     `Delivery location: ${input.deliveryLocation || "—"}`,
     `Needed by: ${input.neededBy || "—"}`,
     "",
     "Message:",
     input.message,
+    ...(itemsBlock ? ["", itemsBlock, "", "Full line details are in the attached Excel file."] : []),
   ].join("\n");
+
+  const htmlItems =
+    inquiryItems.length > 0
+      ? `<tr>
+          <td style="padding:8px 12px 8px 0;vertical-align:top;color:#6c5f70;font-weight:600;white-space:nowrap;">Selected varieties</td>
+          <td style="padding:8px 0;vertical-align:top;color:#33283a;">
+            <ul style="margin:0;padding-left:18px;">
+              ${inquiryItems
+                .map((item) => `<li>${escapeHtml(formatInquiryLine(item))}</li>`)
+                .join("")}
+            </ul>
+            <p style="margin:12px 0 0;color:#6c5f70;">
+              ${escapeHtml(
+                totalsByUnit(inquiryItems)
+                  .map((entry) => `${entry.total} ${entry.unit}`)
+                  .join(" · "),
+              )}
+            </p>
+            <p style="margin:8px 0 0;color:#6c5f70;font-size:13px;">
+              Full line details are in the attached Excel file.
+            </p>
+          </td>
+        </tr>`
+      : "";
 
   const htmlBody = `
     <div style="font-family:Plus Jakarta Sans,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;">
@@ -87,13 +147,49 @@ export async function sendInquiry(formData: FormData): Promise<ContactActionResu
         ${row("Email", input.email)}
         ${row("Phone", input.phone)}
         ${row("Interested in", input.interestedIn)}
-        ${row("Estimated quantity", input.quantity)}
+        ${row("Estimated quantity", input.quantity || summary.quantity)}
         ${row("Delivery location", input.deliveryLocation)}
         ${row("Needed by", input.neededBy)}
         ${row("Message", input.message)}
+        ${htmlItems}
       </table>
     </div>
   `;
+
+  let attachments:
+    | {
+        filename: string;
+        content: Buffer;
+        contentType: string;
+      }[]
+    | undefined;
+
+  if (inquiryItems.length > 0) {
+    try {
+      const excel = await buildInquiryExcelAttachment(inquiryItems, {
+        name: input.name,
+        businessName: input.businessName,
+        email: input.email,
+        phone: input.phone,
+        message: input.message,
+        submittedAt,
+      });
+      attachments = [
+        {
+          filename: excel.filename,
+          content: excel.buffer,
+          contentType: excel.contentType,
+        },
+      ];
+    } catch (error) {
+      console.error("Failed to build inquiry Excel attachment:", error);
+      return {
+        ok: false,
+        error:
+          "We couldn’t prepare the inquiry spreadsheet. Please try again or email sales@originblooms.com.",
+      };
+    }
+  }
 
   try {
     const resend = new Resend(apiKey);
@@ -104,6 +200,7 @@ export async function sendInquiry(formData: FormData): Promise<ContactActionResu
       subject: subjectParts.join(" — "),
       text: textBody,
       html: htmlBody,
+      ...(attachments ? { attachments } : {}),
     });
 
     if (error) {

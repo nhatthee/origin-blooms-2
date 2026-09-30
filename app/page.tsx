@@ -50,27 +50,27 @@ export default function Home() {
         <div className="value-strip" aria-label="Our focus">
           <div className="value-strip-track">
             <div className="value-strip-group">
-              <span>THAI ORIGIN</span>
+              <span>AUTHENTIC THAI CUT FLOWERS</span>
+              <Image src="/icons/spark-orange.svg" alt="" aria-hidden="true" width={16} height={16} className="strip-mark" unoptimized />
+              <span>FRESHLY CUT, EVERY DAY</span>
+              <Image src="/icons/spark-orange.svg" alt="" aria-hidden="true" width={16} height={16} className="strip-mark" unoptimized />
+              <span>FLOWN IN FRESH, EVERY WEEK</span>
               <Image src="/icons/spark-orange.svg" alt="" aria-hidden="true" width={16} height={16} className="strip-mark" unoptimized />
               <span>A STUDY IN PURPLE & WHITE</span>
               <Image src="/icons/spark-orange.svg" alt="" aria-hidden="true" width={16} height={16} className="strip-mark" unoptimized />
-              <span>EACH STEM, A START</span>
-              <Image src="/icons/spark-orange.svg" alt="" aria-hidden="true" width={16} height={16} className="strip-mark" unoptimized />
-              <span>A LITTLE DRAMA, NATURALLY</span>
-              <Image src="/icons/spark-orange.svg" alt="" aria-hidden="true" width={16} height={16} className="strip-mark" unoptimized />
-              <span>FOR FLORISTS & EVENT DESIGNERS</span>
+              <span>EACH STEM, A NEW BEGINNING</span>
               <Image src="/icons/spark-orange.svg" alt="" aria-hidden="true" width={16} height={16} className="strip-mark" unoptimized />
             </div>
             <div className="value-strip-group" aria-hidden="true">
-              <span>THAI ORIGIN</span>
+              <span>AUTHENTIC THAI CUT FLOWERS</span>
+              <Image src="/icons/spark-orange.svg" alt="" aria-hidden="true" width={16} height={16} className="strip-mark" unoptimized />
+              <span>FRESHLY CUT, EVERY DAY</span>
+              <Image src="/icons/spark-orange.svg" alt="" aria-hidden="true" width={16} height={16} className="strip-mark" unoptimized />
+              <span>FLOWN IN FRESH, EVERY WEEK</span>
               <Image src="/icons/spark-orange.svg" alt="" aria-hidden="true" width={16} height={16} className="strip-mark" unoptimized />
               <span>A STUDY IN PURPLE & WHITE</span>
               <Image src="/icons/spark-orange.svg" alt="" aria-hidden="true" width={16} height={16} className="strip-mark" unoptimized />
-              <span>EACH STEM, A START</span>
-              <Image src="/icons/spark-orange.svg" alt="" aria-hidden="true" width={16} height={16} className="strip-mark" unoptimized />
-              <span>A LITTLE DRAMA, NATURALLY</span>
-              <Image src="/icons/spark-orange.svg" alt="" aria-hidden="true" width={16} height={16} className="strip-mark" unoptimized />
-              <span>FOR FLORISTS & EVENT DESIGNERS</span>
+              <span>EACH STEM, A NEW BEGINNING</span>
               <Image src="/icons/spark-orange.svg" alt="" aria-hidden="true" width={16} height={16} className="strip-mark" unoptimized />
             </div>
           </div>
@@ -91,7 +91,7 @@ export default function Home() {
             />
             <div className="story-stamp">ROOTED IN<br /><em>Thailand</em></div>
           </div>
-          <div className="story-copy"><h2 id="story-title">The Hands Behind<br /><em>the Blooms</em></h2><p>Beautiful floral work begins with the flowers themselves. We bring fresh-cut Dendrobium orchids directly from growers in Thailand to florists and event designers across the United States—keeping the connection to their origin at the heart of what we do.</p><a className="text-link" href="/contact">Start a conversation <Arrow diagonal /></a></div>
+          <div className="story-copy"><h2 id="story-title">Where Every Stem Begins</h2><p>Before the design takes shape, the stem defines the standard. We partner with dedicated Thai farms to bring premium Dendrobiums straight to your studio—keeping every bloom vibrant, fresh, and authentically rooted in its origin.</p><a className="text-link" href="/contact">Start a conversation <Arrow diagonal /></a></div>
         </section>
 
         <section className="process section-shell" id="process" aria-labelledby="process-title">

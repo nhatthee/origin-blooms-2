@@ -92,3 +92,102 @@ export function parseContactFormData(formData: FormData): ContactInquiryInput {
     website: trimField(formData.get("website"), CONTACT_LIMITS.honeypot),
   };
 }
+
+export const CONTACT_DRAFT_KEY = "origin-blooms:contact-draft-v1";
+
+export type ContactFormValues = {
+  name: string;
+  businessName: string;
+  email: string;
+  phone: string;
+  interestedIn: string;
+  quantity: string;
+  deliveryLocation: string;
+  neededBy: string;
+  message: string;
+  website: string;
+};
+
+export const EMPTY_CONTACT_VALUES: ContactFormValues = {
+  name: "",
+  businessName: "",
+  email: "",
+  phone: "",
+  interestedIn: "",
+  quantity: "",
+  deliveryLocation: "",
+  neededBy: "",
+  message: "",
+  website: "",
+};
+
+export function contactValuesToFormData(values: ContactFormValues): FormData {
+  const formData = new FormData();
+  formData.set("name", values.name);
+  formData.set("businessName", values.businessName);
+  formData.set("email", values.email);
+  formData.set("phone", values.phone);
+  formData.set("interestedIn", values.interestedIn);
+  formData.set("quantity", values.quantity);
+  formData.set("deliveryLocation", values.deliveryLocation);
+  formData.set("neededBy", values.neededBy);
+  formData.set("message", values.message);
+  formData.set("website", values.website);
+  return formData;
+}
+
+export function readContactDraft(): ContactFormValues | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(CONTACT_DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<ContactFormValues>;
+    return {
+      ...EMPTY_CONTACT_VALUES,
+      name: typeof parsed.name === "string" ? parsed.name : "",
+      businessName: typeof parsed.businessName === "string" ? parsed.businessName : "",
+      email: typeof parsed.email === "string" ? parsed.email : "",
+      phone: typeof parsed.phone === "string" ? parsed.phone : "",
+      interestedIn: typeof parsed.interestedIn === "string" ? parsed.interestedIn : "",
+      quantity: typeof parsed.quantity === "string" ? parsed.quantity : "",
+      deliveryLocation:
+        typeof parsed.deliveryLocation === "string" ? parsed.deliveryLocation : "",
+      neededBy: typeof parsed.neededBy === "string" ? parsed.neededBy : "",
+      message: typeof parsed.message === "string" ? parsed.message : "",
+      website: "",
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function writeContactDraft(values: ContactFormValues): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(
+      CONTACT_DRAFT_KEY,
+      JSON.stringify({
+        name: values.name,
+        businessName: values.businessName,
+        email: values.email,
+        phone: values.phone,
+        interestedIn: values.interestedIn,
+        quantity: values.quantity,
+        deliveryLocation: values.deliveryLocation,
+        neededBy: values.neededBy,
+        message: values.message,
+      }),
+    );
+  } catch {
+    // private mode — ignore
+  }
+}
+
+export function clearContactDraft(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.removeItem(CONTACT_DRAFT_KEY);
+  } catch {
+    // ignore
+  }
+}

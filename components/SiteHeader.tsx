@@ -10,6 +10,7 @@ import {
   type TransitionEvent,
 } from "react";
 import { usePathname } from "next/navigation";
+import { useInquiry } from "./InquiryProvider";
 import { CLOSE_MOBILE_NAV_EVENT, ProductsNavMenu } from "./ProductsNavLink";
 
 type SiteHeaderProps = {
@@ -125,7 +126,13 @@ function unlockBodyScroll(scrollY: number) {
 export function SiteHeader({ homePage = false }: SiteHeaderProps) {
   const pathname = usePathname() || "/";
   const productsCurrent = pageCurrent(pathname, "/products");
+  const inquiryCurrent = pageCurrent(pathname, "/inquiry");
+  const { count: inquiryCount, ready: inquiryReady } = useInquiry();
   const navId = useId();
+  const inquiryLabel =
+    inquiryReady && inquiryCount > 0
+      ? `Inquiry (${inquiryCount})`
+      : "Inquiry";
   const [menuOpen, setMenuOpen] = useState(false);
   const [panelMounted, setPanelMounted] = useState(false);
   const [panelRevealed, setPanelRevealed] = useState(false);
@@ -272,6 +279,13 @@ export function SiteHeader({ homePage = false }: SiteHeaderProps) {
           <a href="/contact" aria-current={pageCurrent(pathname, "/contact")}>
             Contact
           </a>
+          <a
+            href="/inquiry"
+            className="inquiry-nav-link"
+            aria-current={inquiryCurrent}
+          >
+            {inquiryLabel}
+          </a>
           <a href="/resources" aria-current={pageCurrent(pathname, "/resources")}>
             Resources
           </a>
@@ -319,6 +333,13 @@ export function SiteHeader({ homePage = false }: SiteHeaderProps) {
             </a>
             <a href="/contact" aria-current={pageCurrent(pathname, "/contact")}>
               Contact
+            </a>
+            <a
+              href="/inquiry"
+              className="inquiry-nav-link"
+              aria-current={inquiryCurrent}
+            >
+              {inquiryLabel}
             </a>
             <a href="/resources" aria-current={pageCurrent(pathname, "/resources")}>
               Resources
