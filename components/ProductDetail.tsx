@@ -59,6 +59,8 @@ export function ProductDetail({ product }: ProductDetailProps) {
   const packing = packingLines(product);
   const formatCrumbHref = productsHref(product.format);
   const familyCrumbHref = productsHref(product.format, product.family);
+  const detailEyebrow = product.detailEyebrow?.trim() || "Product Details";
+  const detailTitle = product.detailName?.trim() || product.name;
 
   useEffect(() => {
     if (!lightboxOpen) return;
@@ -187,8 +189,8 @@ export function ProductDetail({ product }: ProductDetailProps) {
         </div>
 
         <div className="product-detail-copy">
-          <p className="eyebrow">{product.category}</p>
-          <h1 id="product-detail-title">{product.name}</h1>
+          <p className="product-detail-section-title">{detailEyebrow}</p>
+          <h1 id="product-detail-title">{detailTitle}</h1>
           <dl className="product-detail-meta">
             <div>
               <dt>Format</dt>
@@ -205,10 +207,9 @@ export function ProductDetail({ product }: ProductDetailProps) {
               </div>
             ) : null}
           </dl>
-          <p className="product-detail-description">{product.description}</p>
 
           <div className="product-detail-packing">
-            <h2>Packing Details</h2>
+            <h2 className="product-detail-section-title">Packing Details</h2>
             <dl>
               {packing.map((row) => (
                 <div key={row.label}>

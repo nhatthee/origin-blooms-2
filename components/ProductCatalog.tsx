@@ -86,7 +86,44 @@ export function ProductCatalog({ products }: ProductCatalogProps) {
     >
       <header className="products-intro">
         <p className="eyebrow">{eyebrow}</p>
-        <h1 id="products-title">Made for What You Create.</h1>
+        <div className="products-intro-row">
+          <h1 id="products-title">Made for What You Create.</h1>
+          <div className="products-toolbar">
+            <label className="products-search">
+              <span className="visually-hidden">Search variety name</span>
+              <input
+                type="search"
+                name="q"
+                placeholder="Search variety"
+                value={qParam}
+                onChange={(event) => pushQuery({ q: event.target.value })}
+                autoComplete="off"
+              />
+            </label>
+            {!emptyCategory ? (
+              <>
+                <label className="products-color-filter">
+                  <span className="visually-hidden">Color</span>
+                  <select
+                    value={colorParam}
+                    aria-label="Color"
+                    onChange={(event) => pushQuery({ color: event.target.value })}
+                  >
+                    <option value="">All colors</option>
+                    {colors.map((color) => (
+                      <option key={color} value={color}>
+                        {color}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <p className="products-result-count" role="status" aria-live="polite">
+                  {visible.length} {visible.length === 1 ? "variety" : "varieties"}
+                </p>
+              </>
+            ) : null}
+          </div>
+        </div>
       </header>
 
       <div className="products-catalog-layout" id="product-catalog">
@@ -108,39 +145,6 @@ export function ProductCatalog({ products }: ProductCatalogProps) {
         </nav>
 
         <div className="products-main">
-          {!emptyCategory ? (
-            <div className="products-toolbar">
-              <label className="products-search">
-                <span className="visually-hidden">Search variety name</span>
-                <input
-                  type="search"
-                  name="q"
-                  placeholder="Search variety"
-                  value={qParam}
-                  onChange={(event) => pushQuery({ q: event.target.value })}
-                  autoComplete="off"
-                />
-              </label>
-              <label className="products-color-filter">
-                <span className="products-filter-label">Color</span>
-                <select
-                  value={colorParam}
-                  onChange={(event) => pushQuery({ color: event.target.value })}
-                >
-                  <option value="">All colors</option>
-                  {colors.map((color) => (
-                    <option key={color} value={color}>
-                      {color}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <p className="products-result-count" role="status" aria-live="polite">
-                {visible.length} {visible.length === 1 ? "variety" : "varieties"}
-              </p>
-            </div>
-          ) : null}
-
           {emptyCategory ? (
             <p className="products-coming-soon" role="status">
               Coming soon
@@ -182,9 +186,6 @@ export function ProductCatalog({ products }: ProductCatalogProps) {
                             {orchid.name}
                           </a>
                         </h3>
-                        {orchid.number ? (
-                          <p className="product-code">{orchid.number}</p>
-                        ) : null}
                       </div>
                     </div>
                   </article>

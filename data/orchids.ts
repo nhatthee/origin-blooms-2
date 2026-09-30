@@ -62,7 +62,19 @@ export const STANDARD_CUT_STEM_SIZES: ProductStemSize[] = [
 export type OrchidProduct = {
   number: string;
   slug: string;
+  /** Catalog, breadcrumb, inquiry, email, and Excel display name */
   name: string;
+  /**
+   * Optional product-detail page headline under “Product Details”.
+   * When omitted, the detail page uses `name`. Include any genus prefix in the data
+   * (e.g. “Den. …”) — components do not invent “Den.” automatically.
+   */
+  detailName?: string;
+  /**
+   * Optional product-detail page section title above the headline.
+   * When omitted, defaults to “Product Details”.
+   */
+  detailEyebrow?: string;
   descriptor: string;
   tagline?: string;
   imageClass: string;
@@ -96,9 +108,11 @@ export const UNKNOWN_DETAIL = "Confirmed with your quote";
 
 export const orchids: OrchidProduct[] = [
   {
-    number: "01",
+    number: "SN",
     slug: "sonia-purple",
-    name: "Sonia Purple",
+    name: "Sonia",
+    detailName: "Den. Sonia",
+    detailEyebrow: "Product Details",
     descriptor: "Fresh-cut orchid stems",
     tagline: "PURPLE FOR IMPACT",
     imageClass: "sonia-image",
@@ -106,26 +120,28 @@ export const orchids: OrchidProduct[] = [
     images: [
       {
         src: "/images/products/sonia-purple.png",
-        alt: "Sonia Purple fresh-cut orchid stems",
+        alt: "Sonia fresh-cut orchid stems",
         kind: "product",
       },
       {
         src: "/images/products/sonia-purple-pack.png",
-        alt: "Sonia Purple packing",
+        alt: "Sonia packing",
         kind: "packing",
       },
     ],
     category: "DENDROBIUM SONIA",
     format: "cut",
     family: "dendrobium",
-    color: "Purple",
+    color: "Red Magenta Tone",
     description: "Fresh-cut orchid stems",
     order: { unit: "stems", stemSizes: STANDARD_CUT_STEM_SIZES },
   },
   {
-    number: "02",
+    number: "BWF",
     slug: "big-white",
-    name: "Big White",
+    name: "Big White Form",
+    detailName: "Den. Big White Form",
+    detailEyebrow: "Product Details",
     descriptor: "Fresh-cut orchid stems",
     tagline: "WHITE FOR BALANCE",
     imageClass: "white-image",
@@ -133,14 +149,14 @@ export const orchids: OrchidProduct[] = [
     images: [
       {
         src: "/images/products/big-white.png",
-        alt: "Big White fresh-cut orchid stems",
+        alt: "Big White Form fresh-cut orchid stems",
         kind: "product",
       },
     ],
     category: "DENDROBIUM BIG WHITE",
     format: "cut",
     family: "dendrobium",
-    color: "White",
+    color: "White Tone",
     description: "Fresh-cut orchid stems",
     order: { unit: "stems", stemSizes: STANDARD_CUT_STEM_SIZES },
   },
