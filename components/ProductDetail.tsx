@@ -336,16 +336,13 @@ export function ProductDetail({ product }: ProductDetailProps) {
                 <button className="button button-primary" type="submit">
                   Add to inquiry
                 </button>
-                <a className="button button-secondary" href="/inquiry">
+                <a className="button button-secondary product-detail-view-list" href="/inquiry">
                   View inquiry list
                 </a>
               </div>
               {addedNote ? (
-                <p className="product-detail-added" role="status">
-                  {addedNote}{" "}
-                  <a className="text-link product-detail-added-link" href="/inquiry">
-                    Open list
-                  </a>
+                <p className="product-detail-added" role="status" aria-live="polite">
+                  {addedNote}
                 </p>
               ) : null}
             </form>

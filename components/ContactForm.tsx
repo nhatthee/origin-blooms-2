@@ -5,6 +5,7 @@ import {
   Suspense,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   useTransition,
@@ -27,6 +28,7 @@ import {
 import { formatInquirySummary, groupInquiryByProduct, totalStems, totalsByUnit } from "../lib/inquiry";
 import { Arrow } from "./Arrow";
 import { useInquiry } from "./InquiryProvider";
+import { SHOW_SITE_CHROME_EVENT } from "./ProductsNavLink";
 
 type FormStatus = "idle" | "submitting" | "error";
 type Step = "form" | "review" | "success";
@@ -39,6 +41,8 @@ function displayOrDash(value: string) {
 function ContactFormInner() {
   const formId = useId();
   const formRef = useRef<HTMLFormElement>(null);
+  const thanksTitleRef = useRef<HTMLHeadingElement>(null);
+  const pendingSuccessViewportRef = useRef(false);
   const searchParams = useSearchParams();
   const { items, ready, clear: clearInquiry } = useInquiry();
   const prefilledRef = useRef(false);
@@ -61,6 +65,17 @@ function ContactFormInner() {
     step === "review" &&
     items.length === 0 &&
     (reviewRequiresProductsRef.current || fromInquiry);
+
+  useLayoutEffect(() => {
+    if (!pendingSuccessViewportRef.current) return;
+    if (step !== "success") return;
+    pendingSuccessViewportRef.current = false;
+
+    const scrollingElement = document.scrollingElement ?? document.documentElement;
+    scrollingElement.scrollTop = 0;
+    window.dispatchEvent(new Event(SHOW_SITE_CHROME_EVENT));
+    thanksTitleRef.current?.focus({ preventScroll: true });
+  }, [step]);
 
   useEffect(() => {
     if (draftLoadedRef.current) return;
@@ -230,8 +245,8 @@ function ContactFormInner() {
         clearInquiry();
         setValues(EMPTY_CONTACT_VALUES);
         setStatus("idle");
+        pendingSuccessViewportRef.current = true;
         setStep("success");
-        window.scrollTo({ top: 0, behavior: "smooth" });
         return;
       }
 
@@ -249,7 +264,14 @@ function ContactFormInner() {
     return (
       <div className="inquiry-thanks" role="status">
         <p className="eyebrow">INQUIRY SENT</p>
-        <h2 className="inquiry-thanks-title">Thank you</h2>
+        <h2
+          id="inquiry-thanks-title"
+          className="inquiry-thanks-title"
+          tabIndex={-1}
+          ref={thanksTitleRef}
+        >
+          Thank you
+        </h2>
         <p className="inquiry-thanks-body">
           Your wholesale inquiry was sent. We&apos;ll review your request and get back to
           you soon. This is a quote request — not an order confirmation.
@@ -442,12 +464,7 @@ function ContactFormInner() {
             {!submitting ? <Arrow /> : null}
           </button>
         </div>
-        {items.length > 0 ? (
-          <p className="inquiry-review-edit-products">
-            Need to change varieties or quantities?{" "}
-            <a href="/inquiry">Edit product list</a>
-          </p>
-        ) : reviewBlockedEmpty ? (
+        {reviewBlockedEmpty ? (
           <p className="inquiry-review-edit-products">
             <a href="/inquiry">Open inquiry list</a>
             {" · "}

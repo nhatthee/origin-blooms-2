@@ -24,6 +24,7 @@ type ProductsNavMenuProps = {
 
 const HOVER_NAV_MQ = "(hover: hover) and (pointer: fine) and (min-width: 761px)";
 export const CLOSE_MOBILE_NAV_EVENT = "originblooms:close-mobile-nav";
+export const SHOW_SITE_CHROME_EVENT = "originblooms:show-site-chrome";
 
 function stickyChromeOffset() {
   const chrome = document.querySelector<HTMLElement>(".site-chrome");
@@ -185,6 +186,7 @@ export function ProductsNavMenu({
       >
         {PRODUCT_FORMATS.map((item) => {
           const selected = activeFormat === item.id;
+          const navLabel = item.id === "cut" ? "Orchids" : "Loose Blooms";
           return (
             <a
               key={item.id}
@@ -194,7 +196,7 @@ export function ProductsNavMenu({
               aria-current={selected ? "true" : undefined}
               onClick={onOptionClick}
             >
-              {item.label}
+              {navLabel}
             </a>
           );
         })}

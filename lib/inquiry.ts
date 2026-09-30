@@ -276,6 +276,11 @@ export function groupInquiryByProduct(items: InquiryItem[]): InquiryProductGroup
   return order.map((slug) => map.get(slug)!);
 }
 
+/** Distinct products in the inquiry (sizes of the same slug count as one). */
+export function uniqueProductCount(items: InquiryItem[]): number {
+  return groupInquiryByProduct(items).length;
+}
+
 export function totalStems(items: InquiryItem[]): number {
   return items
     .filter((item) => item.unit === "stems")

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Announcement } from "./Announcement";
-import { CLOSE_MOBILE_NAV_EVENT } from "./ProductsNavLink";
+import { CLOSE_MOBILE_NAV_EVENT, SHOW_SITE_CHROME_EVENT } from "./ProductsNavLink";
 import { SiteHeader } from "./SiteHeader";
 
 type SiteChromeProps = {
@@ -16,6 +16,7 @@ type SiteChromeProps = {
 export function SiteChrome({ homePage = false, alwaysVisible = false }: SiteChromeProps) {
   const lastYRef = useRef(0);
   const hiddenRef = useRef(false);
+  const suppressHideRef = useRef(false);
   const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
@@ -35,6 +36,7 @@ export function SiteChrome({ homePage = false, alwaysVisible = false }: SiteChro
 
     lastYRef.current = window.scrollY;
     hiddenRef.current = false;
+    suppressHideRef.current = false;
 
     const applyHidden = (next: boolean) => {
       if (hiddenRef.current === next) return;
@@ -52,6 +54,15 @@ export function SiteChrome({ homePage = false, alwaysVisible = false }: SiteChro
       }
 
       const y = Math.max(0, window.scrollY);
+
+      // Programmatic reveal (e.g. after Clear inquiry) may still emit trailing
+      // scroll events — keep chrome visible until that cascade settles.
+      if (suppressHideRef.current) {
+        applyHidden(false);
+        lastYRef.current = y;
+        return;
+      }
+
       const lastY = lastYRef.current;
 
       if (y <= 0) {
@@ -71,7 +82,45 @@ export function SiteChrome({ homePage = false, alwaysVisible = false }: SiteChro
     };
 
     window.addEventListener("scroll", onScroll, { passive: true, capture: true });
-    return () => window.removeEventListener("scroll", onScroll, true);
+    let settleFrame = 0;
+    const onShowChrome = () => {
+      applyHidden(false);
+      suppressHideRef.current = true;
+      lastYRef.current = Math.max(0, window.scrollY);
+      window.cancelAnimationFrame(settleFrame);
+
+      let last = window.scrollY;
+      let stableFrames = 0;
+      let guardedFrames = 0;
+      const settle = () => {
+        const y = Math.max(0, window.scrollY);
+        applyHidden(false);
+        lastYRef.current = y;
+        guardedFrames += 1;
+
+        if (Math.abs(y - last) < 1) stableFrames += 1;
+        else {
+          stableFrames = 0;
+          last = y;
+        }
+
+        // Stop when scroll is quiet, or after ~1s of frames as a hard cap.
+        if (stableFrames >= 2 || guardedFrames >= 60) {
+          suppressHideRef.current = false;
+          lastYRef.current = y;
+          applyHidden(false);
+          return;
+        }
+        settleFrame = window.requestAnimationFrame(settle);
+      };
+      settleFrame = window.requestAnimationFrame(settle);
+    };
+    window.addEventListener(SHOW_SITE_CHROME_EVENT, onShowChrome);
+    return () => {
+      window.cancelAnimationFrame(settleFrame);
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener(SHOW_SITE_CHROME_EVENT, onShowChrome);
+    };
   }, [alwaysVisible]);
 
   return (

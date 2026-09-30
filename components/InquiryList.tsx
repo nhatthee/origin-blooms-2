@@ -1,22 +1,36 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   groupInquiryByProduct,
   parseNonNegativeIntInput,
   totalStems,
 } from "../lib/inquiry";
 import { useInquiry } from "./InquiryProvider";
+import { SHOW_SITE_CHROME_EVENT } from "./ProductsNavLink";
 
 export function InquiryList() {
   const { items, ready, setQuantity, removeItem, clear, count } = useInquiry();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [confirmClear, setConfirmClear] = useState(false);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const pendingClearViewportRef = useRef(false);
 
   const groups = useMemo(() => groupInquiryByProduct(items), [items]);
   const stemsGrandTotal = useMemo(() => totalStems(items), [items]);
+
+  useLayoutEffect(() => {
+    if (!pendingClearViewportRef.current) return;
+    if (!ready || items.length > 0) return;
+    pendingClearViewportRef.current = false;
+
+    const scrollingElement = document.scrollingElement ?? document.documentElement;
+    scrollingElement.scrollTop = 0;
+    window.dispatchEvent(new Event(SHOW_SITE_CHROME_EVENT));
+    titleRef.current?.focus({ preventScroll: true });
+  }, [ready, items.length]);
 
   function onQuantityChange(id: string, value: string) {
     setDrafts((prev) => ({ ...prev, [id]: value }));
@@ -41,13 +55,16 @@ export function InquiryList() {
     setDrafts({});
     setErrors({});
     setConfirmClear(false);
+    pendingClearViewportRef.current = true;
   }
 
   return (
     <section className="inquiry-page section-shell" aria-labelledby="inquiry-title">
       <header className="inquiry-intro">
         <p className="eyebrow">INQUIRY LIST</p>
-        <h1 id="inquiry-title">Your selected varieties</h1>
+        <h1 id="inquiry-title" tabIndex={-1} ref={titleRef}>
+          Your selected varieties
+        </h1>
         <p className="inquiry-lead">
           Review quantities and options, then request a quote. No pricing or checkout —
           we confirm availability with you.
@@ -148,11 +165,41 @@ export function InquiryList() {
             ))}
           </ul>
 
-          {stemsGrandTotal > 0 ? (
-            <p className="inquiry-grand-total" role="status">
-              Total stems: <strong>{stemsGrandTotal}</strong>
-            </p>
-          ) : null}
+          <div className="inquiry-summary-row">
+            {stemsGrandTotal > 0 ? (
+              <p className="inquiry-grand-total" role="status">
+                Total stems: <strong>{stemsGrandTotal}</strong>
+              </p>
+            ) : (
+              <span className="inquiry-summary-row-grow" aria-hidden="true" />
+            )}
+            {!confirmClear ? (
+              <button
+                type="button"
+                className="inquiry-clear-text-btn"
+                onClick={() => setConfirmClear(true)}
+              >
+                <svg
+                  className="inquiry-clear-text-icon"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <path
+                    d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"
+                    stroke="currentColor"
+                    strokeWidth="1.75"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                Clear inquiry
+              </button>
+            ) : null}
+          </div>
 
           {confirmClear ? (
             <div
@@ -185,13 +232,6 @@ export function InquiryList() {
               <a className="button button-secondary" href="/products">
                 Continue selecting
               </a>
-              <button
-                type="button"
-                className="button button-secondary inquiry-clear-btn"
-                onClick={() => setConfirmClear(true)}
-              >
-                Clear inquiry
-              </button>
               <a className="button button-primary" href="/contact?from=inquiry">
                 Request a quote
               </a>
