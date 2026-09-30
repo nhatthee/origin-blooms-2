@@ -15,8 +15,8 @@ export default function OurStoryPage() {
       <main>
         <section className="about-story section-shell" aria-labelledby="about-story-title">
           <div className="about-story-grid">
+            <p className="eyebrow about-story-eyebrow">THE ORIGIN STORY</p>
             <div className="about-story-copy">
-              <p className="eyebrow">THE ORIGIN STORY</p>
               <h1 id="about-story-title">Where It Begins Matters</h1>
               <div className="about-story-body">
                 <p>

@@ -6,7 +6,34 @@ export type OrchidProduct = {
   imageClass: string;
   image: string;
   category: string;
+  format: ProductFormat;
+  family: ProductFamily;
 };
+
+export type ProductFormat = "cut" | "loose";
+
+export type ProductFamily =
+  | "dendrobium"
+  | "mokara-aranda"
+  | "vanda"
+  | "oncidium"
+  | "dyed";
+
+/** @deprecated Use ProductFormat */
+export type ProductFilter = ProductFormat;
+
+export const PRODUCT_FORMATS: { id: ProductFormat; label: string }[] = [
+  { id: "cut", label: "Fresh Cut Orchids" },
+  { id: "loose", label: "Fresh Loose Blooms" },
+];
+
+export const PRODUCT_FAMILIES: { id: ProductFamily; label: string }[] = [
+  { id: "dendrobium", label: "Dendrobium" },
+  { id: "mokara-aranda", label: "Mokara & Aranda" },
+  { id: "vanda", label: "Vanda" },
+  { id: "oncidium", label: "Oncidium" },
+  { id: "dyed", label: "Dyed Orchids" },
+];
 
 export const orchids: OrchidProduct[] = [
   {
@@ -17,6 +44,8 @@ export const orchids: OrchidProduct[] = [
     imageClass: "sonia-image",
     image: "/images/products/sonia-purple.png",
     category: "DENDROBIUM SONIA",
+    format: "cut",
+    family: "dendrobium",
   },
   {
     number: "02",
@@ -26,6 +55,8 @@ export const orchids: OrchidProduct[] = [
     imageClass: "white-image",
     image: "/images/products/big-white.png",
     category: "DENDROBIUM BIG WHITE",
+    format: "cut",
+    family: "dendrobium",
   },
   {
     number: "03",
@@ -34,6 +65,8 @@ export const orchids: OrchidProduct[] = [
     imageClass: "loose-image",
     image: "/images/products/loose-bloom-sonia.png",
     category: "DENDROBIUM SONIA",
+    format: "loose",
+    family: "dendrobium",
   },
   {
     number: "04",
@@ -42,14 +75,30 @@ export const orchids: OrchidProduct[] = [
     imageClass: "new-collection-image",
     image: "/images/products/loose-bloom-white.png",
     category: "DENDROBIUM BIG WHITE",
+    format: "loose",
+    family: "dendrobium",
   },
 ];
 
-export type ProductFilter = "cut" | "loose";
+export function normalizeProductFormat(value: string | null | undefined): ProductFormat {
+  return value === "loose" ? "loose" : "cut";
+}
 
-export function filterOrchids(filter: ProductFilter): OrchidProduct[] {
-  if (filter === "cut") {
-    return orchids.filter((item) => item.number === "01" || item.number === "02");
-  }
-  return orchids.filter((item) => item.number === "03" || item.number === "04");
+export function normalizeProductFamily(value: string | null | undefined): ProductFamily {
+  const match = PRODUCT_FAMILIES.find((item) => item.id === value);
+  return match ? match.id : "dendrobium";
+}
+
+export function productsHref(format: ProductFormat, family: ProductFamily = "dendrobium") {
+  const params = new URLSearchParams();
+  params.set("format", format);
+  if (family !== "dendrobium") params.set("category", family);
+  return `/products?${params.toString()}`;
+}
+
+export function filterOrchids(
+  format: ProductFormat,
+  family: ProductFamily = "dendrobium",
+): OrchidProduct[] {
+  return orchids.filter((item) => item.format === format && item.family === family);
 }

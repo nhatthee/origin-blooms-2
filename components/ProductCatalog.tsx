@@ -1,25 +1,37 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
-import { filterOrchids, type OrchidProduct, type ProductFilter } from "../data/orchids";
+import { useMemo } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  PRODUCT_FAMILIES,
+  filterOrchids,
+  normalizeProductFamily,
+  normalizeProductFormat,
+  productsHref,
+  type OrchidProduct,
+  type ProductFamily,
+} from "../data/orchids";
 
 type ProductCatalogProps = {
   products: OrchidProduct[];
 };
 
-const filters: { id: ProductFilter; label: string }[] = [
-  { id: "cut", label: "Cut Orchids" },
-  { id: "loose", label: "Loose Blooms" },
-];
-
 export function ProductCatalog({ products }: ProductCatalogProps) {
-  const [filter, setFilter] = useState<ProductFilter>("cut");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const format = normalizeProductFormat(searchParams.get("format"));
+  const family = normalizeProductFamily(searchParams.get("category"));
+  const eyebrow = format === "loose" ? "FRESH LOOSE BLOOMS" : "FRESH CUT ORCHIDS";
 
   const visible = useMemo(() => {
-    const allowed = new Set(filterOrchids(filter).map((item) => item.number));
+    const allowed = new Set(filterOrchids(format, family).map((item) => item.number));
     return products.filter((item) => allowed.has(item.number));
-  }, [filter, products]);
+  }, [family, format, products]);
+
+  const setFamily = (next: ProductFamily) => {
+    router.push(productsHref(format, next), { scroll: false });
+  };
 
   return (
     <section
@@ -27,20 +39,20 @@ export function ProductCatalog({ products }: ProductCatalogProps) {
       aria-labelledby="products-title"
     >
       <header className="products-intro">
-        <p className="eyebrow">GROWN IN THAILAND</p>
+        <p className="eyebrow">{eyebrow}</p>
         <h1 id="products-title">Made for What You Create.</h1>
       </header>
       <div className="products-catalog-layout" id="product-catalog">
         <nav className="products-categories" aria-label="Product categories">
-          {filters.map((item) => {
-            const selected = filter === item.id;
+          {PRODUCT_FAMILIES.map((item) => {
+            const selected = family === item.id;
             return (
               <button
                 key={item.id}
                 type="button"
                 className={`products-category-btn${selected ? " is-selected" : ""}`}
                 aria-pressed={selected}
-                onClick={() => setFilter(item.id)}
+                onClick={() => setFamily(item.id)}
               >
                 {item.label}
               </button>
@@ -48,35 +60,39 @@ export function ProductCatalog({ products }: ProductCatalogProps) {
           })}
         </nav>
 
-        <div className="products-grid" role="list">
-          {visible.map((orchid) => (
-            <article
-              className="product-card catalog-card catalog-card-minimal"
-              key={orchid.number}
-              role="listitem"
-            >
-              <a
-                className={`product-photo photo-slot has-photo ${orchid.imageClass}`}
-                href="/#contact"
-                aria-label={`Ask about ${orchid.name}`}
+        {visible.length === 0 ? (
+          <p className="products-coming-soon" role="status">
+            Coming soon
+          </p>
+        ) : (
+          <div className="products-grid" role="list">
+            {visible.map((orchid) => (
+              <article
+                className="product-card catalog-card catalog-card-minimal"
+                key={orchid.number}
+                role="listitem"
               >
-                <Image
-                  src={orchid.image}
-                  alt={orchid.name}
-                  fill
-                  sizes="(max-width: 760px) 92vw, min(420px, 36vw)"
-                  className="product-photo-media"
-                />
-                <span className="product-index">{orchid.number} / 04</span>
-              </a>
-              <div className="product-info">
-                <div>
-                  {orchid.category ? <p>{orchid.category}</p> : null}
+                <a
+                  className={`product-photo photo-slot has-photo ${orchid.imageClass}`}
+                  href="/contact"
+                  aria-label={`Ask about ${orchid.name}`}
+                >
+                  <Image
+                    src={orchid.image}
+                    alt={orchid.name}
+                    fill
+                    sizes="(max-width: 760px) 92vw, min(420px, 36vw)"
+                    className="product-photo-media"
+                  />
+                  <span className="product-index">{orchid.number} / 04</span>
+                </a>
+                <div className="product-info">
+                  <div>{orchid.category ? <p>{orchid.category}</p> : null}</div>
                 </div>
-              </div>
-            </article>
-          ))}
-        </div>
+              </article>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

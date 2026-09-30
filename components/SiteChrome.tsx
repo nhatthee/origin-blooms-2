@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Announcement } from "./Announcement";
+import { CLOSE_MOBILE_NAV_EVENT } from "./ProductsNavLink";
 import { SiteHeader } from "./SiteHeader";
 
 type SiteChromeProps = {
@@ -40,12 +41,16 @@ export function SiteChrome({ homePage = false, alwaysVisible = false }: SiteChro
       hiddenRef.current = next;
       setHidden(next);
       if (next) {
-        const openMenu = document.querySelector(".site-chrome details[open]");
-        if (openMenu instanceof HTMLDetailsElement) openMenu.open = false;
+        window.dispatchEvent(new Event(CLOSE_MOBILE_NAV_EVENT));
       }
     };
 
     const onScroll = () => {
+      if (document.documentElement.classList.contains("mobile-nav-open")) {
+        applyHidden(false);
+        return;
+      }
+
       const y = Math.max(0, window.scrollY);
       const lastY = lastYRef.current;
 

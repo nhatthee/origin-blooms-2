@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { ProductCatalog } from "../../components/ProductCatalog";
 import { ProductsPageScroll } from "../../components/ProductsPageScroll";
 import { SiteChrome } from "../../components/SiteChrome";
@@ -17,7 +18,9 @@ export default function ProductsPage() {
       <ProductsPageScroll />
       <SiteChrome />
       <main>
-        <ProductCatalog products={orchids} />
+        <Suspense fallback={null}>
+          <ProductCatalog products={orchids} />
+        </Suspense>
       </main>
       <SiteFooter />
     </>
