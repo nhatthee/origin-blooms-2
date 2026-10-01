@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { SiteChrome } from "../../components/SiteChrome";
 import { SiteFooter } from "../../components/SiteFooter";
 
@@ -45,12 +46,15 @@ export default function OurStoryPage() {
                 </p>
               </div>
             </div>
-            <div
-              className="about-story-visual photo-slot"
-              role="img"
-              aria-label="Photo placement for the Origin Blooms story"
-            >
-              <span className="photo-hint">ADD YOUR STORY PHOTO</span>
+            <div className="about-story-visual photo-slot">
+              <Image
+                src="/images/about/orchid-packing-thailand.png"
+                alt="Fresh-cut Dendrobium orchids being prepared for export in Thailand"
+                fill
+                sizes="(max-width: 760px) 100vw, (max-width: 1100px) 45vw, min(520px, 42vw)"
+                style={{ objectFit: "cover", objectPosition: "center" }}
+                priority
+              />
             </div>
           </div>
         </section>

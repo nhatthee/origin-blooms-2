@@ -1,4 +1,4 @@
-export type ProductFormat = "cut" | "loose";
+export type ProductFormat = "cut" | "bouquet" | "loose";
 
 export type ProductFamily =
   | "dendrobium"
@@ -35,7 +35,8 @@ export type ProductPackOption = {
 export type ProductStemSize = {
   id: string;
   label: string;
-  lengthRange: string;
+  /** Omit when stem length is not confirmed — never invent lengths from another genus. */
+  lengthRange?: string;
 };
 
 export type ProductOrderOptions = {
@@ -50,20 +51,53 @@ export type ProductOrderOptions = {
   packOptions?: ProductPackOption[];
 };
 
+/**
+ * Canonical stem-length ranges by size id — single source for catalog, packing,
+ * inquiry, email, and Excel. Do not duplicate these strings elsewhere.
+ */
+export const CUT_STEM_LENGTHS: Record<string, string> = {
+  SS: "35–40 cm",
+  S: "40–45 cm",
+  M: "45–50 cm",
+  L: "50–55 cm",
+  LL: "55–65 cm",
+};
+
+function stemSize(id: string, label: string): ProductStemSize {
+  return { id, label, lengthRange: CUT_STEM_LENGTHS[id] };
+}
+
 /** Standard Dendrobium cut sizes currently offered — referenced from product data, not UI. */
 export const STANDARD_CUT_STEM_SIZES: ProductStemSize[] = [
-  { id: "SS", label: "SS", lengthRange: "35–40 cm" },
-  { id: "S", label: "S", lengthRange: "40–45 cm" },
-  { id: "M", label: "M", lengthRange: "45–50 cm" },
-  { id: "L", label: "L", lengthRange: "50–55 cm" },
-  { id: "LL", label: "LL", lengthRange: "55–65 cm" },
+  stemSize("SS", "SS"),
+  stemSize("S", "S"),
+  stemSize("M", "M"),
+  stemSize("L", "L"),
+  stemSize("LL", "LL"),
 ];
+
+/**
+ * Mokara order sizes confirmed in source packing (stems per tray).
+ * Only M / L / LL — do not auto-enable SS / S.
+ * Lengths come from CUT_STEM_LENGTHS (same map as Dendrobium).
+ */
+export const MOKARA_CUT_STEM_SIZES: ProductStemSize[] = [
+  stemSize("M", "M"),
+  stemSize("L", "L"),
+  stemSize("LL", "LL"),
+];
+
+const MOKARA_CUT_ORDER: ProductOrderOptions = {
+  unit: "stems",
+  stemSizes: MOKARA_CUT_STEM_SIZES,
+};
 
 export type OrchidProduct = {
   /**
    * Product code when confirmed. Use null/omit when still pending —
    * never invent a placeholder code or use display text as an ID.
    * Identity is always `slug`.
+   * Bouquet products omit a product-level code; codes live on bouquet options.
    */
   number?: string | null;
   slug: string;
@@ -97,16 +131,53 @@ export type OrchidProduct = {
   order?: ProductOrderOptions;
   /** Dyed variety flag — products remain under Dendrobium when true */
   isDyed?: boolean;
+  /** Bouquet SKU options — informational table on product details */
+  bouquetOptions?: BouquetOption[];
+  /** Packing note shown above the bouquets-per-tray table */
+  bouquetPackingNote?: string;
+  /** Bouquets per tray by code and stem-size column (null = not available in source doc) */
+  bouquetTrayCounts?: BouquetTrayRow[];
+  /**
+   * Confirmed stems-per-tray packing by size (Mokara, etc.).
+   * Omit sizes that are unavailable — never invent 0 or copy from another genus.
+   */
+  stemsPerTray?: {
+    M?: string;
+    L?: string;
+    LL?: string;
+  };
+};
+
+/** One selectable bouquet SKU row (variety × stem count). */
+export type BouquetOption = {
+  variety: string;
+  stemsPerBouquet: string;
+  foliage: string;
+  code: string;
+};
+
+/**
+ * Bouquets-per-tray counts by stem-size column.
+ * `null` means unavailable in the source document — never display as 0.
+ */
+export type BouquetTrayRow = {
+  code: string;
+  ss: string | null;
+  s: string | null;
+  m: string | null;
+  l: string | null;
+  ll: string | null;
 };
 
 export const PRODUCT_FORMATS: { id: ProductFormat; label: string }[] = [
   { id: "cut", label: "Fresh Cut Orchids" },
+  { id: "bouquet", label: "Bouquet" },
   { id: "loose", label: "Fresh Loose Blooms" },
 ];
 
 export const PRODUCT_FAMILIES: { id: ProductFamily; label: string }[] = [
   { id: "dendrobium", label: "Dendrobium" },
-  { id: "mokara-aranda", label: "Mokara & Aranda" },
+  { id: "mokara-aranda", label: "Mokara" },
   { id: "vanda", label: "Vanda" },
   { id: "oncidium", label: "Oncidium" },
   { id: "dyed", label: "Dyed Orchids" },
@@ -187,6 +258,45 @@ function dendrobiumCut(opts: {
   };
 }
 
+function mokaraCut(opts: {
+  number?: string | null;
+  slug: string;
+  name: string;
+  imageFile: string;
+  color?: string | null;
+  /** Confirmed stems per tray for M / L / LL — omit when unconfirmed */
+  stemsPerTray?: { M: string; L: string; LL: string };
+}): OrchidProduct {
+  const primary = `/images/products/mokara/${opts.imageFile}`;
+  const confirmed = Boolean(opts.stemsPerTray && opts.number?.trim() && opts.color?.trim());
+
+  return {
+    number: opts.number ?? null,
+    slug: opts.slug,
+    name: opts.name,
+    detailName: `Mok. ${opts.name}`,
+    detailEyebrow: "Product Details",
+    descriptor: "Fresh-cut Mokara orchid stems",
+    imageClass: "",
+    image: primary,
+    images: [
+      {
+        src: primary,
+        alt: `${opts.name} fresh-cut Mokara orchid stems`,
+        kind: "product",
+      },
+    ],
+    category: `MOKARA ${opts.name.toUpperCase()}`,
+    format: "cut",
+    family: "mokara-aranda",
+    color: opts.color ?? null,
+    description: "Fresh-cut Mokara orchid stems",
+    stemsPerTray: opts.stemsPerTray,
+    // Only enable stem inquiry when code, color, and tray packing are confirmed.
+    order: confirmed ? MOKARA_CUT_ORDER : undefined,
+  };
+}
+
 export const orchids: OrchidProduct[] = [
   // 01 — keep slug / inquiry identity for Big White Form
   dendrobiumCut({
@@ -205,6 +315,7 @@ export const orchids: OrchidProduct[] = [
         kind: "product",
       },
       dendrobiumGalleryExtra("big-white-form-2.png", "Big White Form"),
+      dendrobiumGalleryExtra("big-white-form-3.png", "Big White Form"),
     ],
   }),
   // 02 — code pending
@@ -585,6 +696,209 @@ export const orchids: OrchidProduct[] = [
     color: "Yellow — Dyed",
     isDyed: true,
   }),
+  // Mokara (Orchids → Mokara) — order matches source files 01–19; skip if re-run would duplicate slugs
+  mokaraCut({
+    number: "CS",
+    slug: "mokara-calipso",
+    name: "Calipso",
+    imageFile: "01-calipso.png",
+    color: "Purple Tone",
+    stemsPerTray: { M: "90", L: "80", LL: "70" },
+  }),
+  mokaraCut({
+    number: "BCS",
+    slug: "mokara-big-calipso",
+    name: "Big Calipso",
+    imageFile: "02-big-calipso.png",
+    color: "Purple Tone",
+    stemsPerTray: { M: "80", L: "70", LL: "60" },
+  }),
+  mokaraCut({
+    number: "NR",
+    slug: "mokara-norah-blue",
+    name: "Norah Blue",
+    imageFile: "03-norah-blue.png",
+    color: "Purple Tone",
+    stemsPerTray: { M: "80", L: "70", LL: "60" },
+  }),
+  mokaraCut({
+    number: null,
+    slug: "mokara-anne-cool",
+    name: "Anne Cool",
+    imageFile: "04-anne-cool.png",
+    color: null,
+  }),
+  mokaraCut({
+    number: null,
+    slug: "mokara-ryder",
+    name: "Ryder",
+    imageFile: "05-ryder.png",
+    color: null,
+  }),
+  mokaraCut({
+    number: "BS",
+    slug: "mokara-blue-sky",
+    name: "Blue Sky",
+    imageFile: "06-blue-sky.png",
+    color: "Purple Tone",
+    stemsPerTray: { M: "90", L: "80", LL: "70" },
+  }),
+  mokaraCut({
+    number: "JC",
+    slug: "mokara-juicy-syrup",
+    name: "Juicy Syrup",
+    imageFile: "07-juicy-syrub.png",
+    color: "Orange Tone",
+    stemsPerTray: { M: "90", L: "80", LL: "70" },
+  }),
+  mokaraCut({
+    number: "YK",
+    slug: "mokara-yellow-kitty",
+    name: "Yellow Kitty",
+    imageFile: "08-yellow-kitty.png",
+    color: "Yellow Tone",
+    stemsPerTray: { M: "80", L: "70", LL: "60" },
+  }),
+  mokaraCut({
+    number: "YL",
+    slug: "mokara-yellow-salaya",
+    name: "Yellow Salaya",
+    imageFile: "09-yellow-salaya.png",
+    color: "Yellow Tone",
+    stemsPerTray: { M: "90", L: "80", LL: "70" },
+  }),
+  mokaraCut({
+    number: "TM",
+    slug: "mokara-tammy-yellow",
+    name: "Tammy Yellow",
+    imageFile: "10-tammy-yellow.png",
+    color: "Yellow Tone",
+    stemsPerTray: { M: "90", L: "80", LL: "70" },
+  }),
+  mokaraCut({
+    number: "TR",
+    slug: "mokara-tangerine",
+    name: "Tangerine",
+    imageFile: "11-tangerine.png",
+    color: "Orange Tone",
+    stemsPerTray: { M: "90", L: "80", LL: "70" },
+  }),
+  mokaraCut({
+    number: "PN",
+    slug: "mokara-punny",
+    name: "Punny",
+    imageFile: "12-punny.png",
+    color: "Yellow Tone",
+    stemsPerTray: { M: "80", L: "70", LL: "60" },
+  }),
+  mokaraCut({
+    number: "OJ",
+    slug: "mokara-orange-jubkuan",
+    name: "Orange Jubkuan",
+    imageFile: "13-orange-jubkuan.png",
+    color: "Orange Tone",
+    stemsPerTray: { M: "80", L: "70", LL: "60" },
+  }),
+  mokaraCut({
+    number: "RL",
+    slug: "mokara-red-salaya",
+    name: "Red Salaya",
+    imageFile: "14-red-salaya.png",
+    color: "Red Tone",
+    stemsPerTray: { M: "90", L: "80", LL: "70" },
+  }),
+  mokaraCut({
+    number: "RB",
+    slug: "mokara-red-ruby",
+    name: "Red Ruby",
+    imageFile: "15-red-ruby.png",
+    color: "Red Tone",
+    stemsPerTray: { M: "90", L: "80", LL: "70" },
+  }),
+  mokaraCut({
+    number: "RC",
+    slug: "mokara-red-crystal",
+    name: "Red Crystal",
+    imageFile: "16-red-crystal.png",
+    color: "Red Tone",
+    stemsPerTray: { M: "90", L: "80", LL: "70" },
+  }),
+  mokaraCut({
+    number: "RP",
+    slug: "mokara-royal-sapphire",
+    name: "Royal Sapphire",
+    imageFile: "17-royal-sapphire.png",
+    color: "Pink Tone",
+    stemsPerTray: { M: "90", L: "80", LL: "70" },
+  }),
+  mokaraCut({
+    number: "PJ",
+    slug: "mokara-pink-jubkuan",
+    name: "Pink Jubkuan",
+    imageFile: "18-pink-jubkuan.png",
+    color: "Pink Tone",
+    stemsPerTray: { M: "80", L: "70", LL: "60" },
+  }),
+  mokaraCut({
+    number: "TC",
+    slug: "mokara-tago-christine",
+    name: "Tago Christine",
+    imageFile: "19-tago-cristine.png",
+    color: "White Tone",
+    stemsPerTray: { M: "80", L: "70", LL: "60" },
+  }),
+  {
+    number: null,
+    slug: "bouquet",
+    name: "Orchid Bouquets",
+    detailName: "Orchid Bouquets",
+    detailEyebrow: "Product Details",
+    descriptor:
+      "Choose Dendrobium or Mokara bouquets with 3, 5, or 7 stems, each finished with one leaf.",
+    imageClass: "",
+    image: "/images/products/bouquet/bouquet-1.png",
+    images: [
+      {
+        src: "/images/products/bouquet/bouquet-1.png",
+        alt: "Bouquet of fresh-cut Dendrobium orchids",
+        kind: "product",
+      },
+      {
+        src: "/images/products/bouquet/bouquet-2.png",
+        alt: "Bouquet — additional photo",
+        kind: "product",
+      },
+      {
+        src: "/images/products/bouquet/bouquet-3.png",
+        alt: "Bouquet — additional photo",
+        kind: "product",
+      },
+    ],
+    category: "BOUQUET",
+    format: "bouquet",
+    family: "dendrobium",
+    color: null,
+    description:
+      "Choose Dendrobium or Mokara bouquets with 3, 5, or 7 stems, each finished with one leaf.",
+    bouquetOptions: [
+      { variety: "Dendrobium", stemsPerBouquet: "3 stems", foliage: "1 leaf", code: "DBQ3" },
+      { variety: "Dendrobium", stemsPerBouquet: "5 stems", foliage: "1 leaf", code: "DBQ5" },
+      { variety: "Dendrobium", stemsPerBouquet: "7 stems", foliage: "1 leaf", code: "DBQ7" },
+      { variety: "Mokara", stemsPerBouquet: "3 stems", foliage: "1 leaf", code: "MBQ3" },
+      { variety: "Mokara", stemsPerBouquet: "5 stems", foliage: "1 leaf", code: "MBQ5" },
+      { variety: "Mokara", stemsPerBouquet: "7 stems", foliage: "1 leaf", code: "MBQ7" },
+    ],
+    bouquetPackingNote: "Bouquets per tray vary by bouquet type and stem size.",
+    bouquetTrayCounts: [
+      { code: "DBQ3", ss: "33", s: "30", m: "30", l: "26", ll: "23" },
+      { code: "DBQ5", ss: "20", s: "18", m: "18", l: "16", ll: "14" },
+      { code: "DBQ7", ss: "14", s: "12", m: "12", l: "11", ll: "10" },
+      { code: "MBQ3", ss: null, s: null, m: "30", l: "26", ll: "23" },
+      { code: "MBQ5", ss: null, s: null, m: "18", l: "16", ll: "14" },
+      { code: "MBQ7", ss: null, s: null, m: "12", l: "11", ll: "10" },
+    ],
+    // Inquiry option-picker not wired yet — detail page keeps Inquire CTA
+  },
   {
     number: "03",
     slug: "loose-blooms-sonia",
@@ -639,8 +953,20 @@ export function displayProductColor(product: Pick<OrchidProduct, "color">): stri
   return color ? color : PENDING_CONFIRMATION;
 }
 
+/** Tray count cell — null/empty means unavailable in source data, shown as an em dash. */
+export function displayBouquetTrayCount(value: string | null | undefined): string {
+  if (value == null || value.trim() === "") return "—";
+  return value.trim();
+}
+
+export function hasBouquetOptions(product: OrchidProduct): boolean {
+  return Boolean(product.bouquetOptions?.length);
+}
+
 export function normalizeProductFormat(value: string | null | undefined): ProductFormat {
-  return value === "loose" ? "loose" : "cut";
+  if (value === "loose") return "loose";
+  if (value === "bouquet") return "bouquet";
+  return "cut";
 }
 
 export function normalizeProductFamily(value: string | null | undefined): ProductFamily {
@@ -736,8 +1062,41 @@ export function formatLabel(format: ProductFormat): string {
   return PRODUCT_FORMATS.find((item) => item.id === format)?.label ?? "Products";
 }
 
+/** Short breadcrumb / nav label for product formats (Orchids / Bouquets / Loose Blooms). */
+export function formatNavLabel(format: ProductFormat): string {
+  if (format === "cut") return "Orchids";
+  if (format === "bouquet") return "Bouquets";
+  return "Loose Blooms";
+}
+
 export function familyLabel(family: ProductFamily): string {
   return PRODUCT_FAMILIES.find((item) => item.id === family)?.label ?? family;
+}
+
+export function stemsPerTrayRows(
+  product: OrchidProduct,
+): { size: string; stemLength: string; stemsPerTray: string }[] {
+  const tray = product.stemsPerTray;
+  if (!tray) return [];
+
+  const lengthBySize = new Map(
+    (product.order?.stemSizes ?? MOKARA_CUT_STEM_SIZES).map((size) => [
+      size.id,
+      size.lengthRange?.trim() || CUT_STEM_LENGTHS[size.id] || "",
+    ]),
+  );
+
+  const rows: { size: string; stemLength: string; stemsPerTray: string }[] = [];
+  for (const size of ["M", "L", "LL"] as const) {
+    const count = tray[size]?.trim();
+    if (!count) continue;
+    rows.push({
+      size,
+      stemLength: lengthBySize.get(size) || CUT_STEM_LENGTHS[size] || "",
+      stemsPerTray: count,
+    });
+  }
+  return rows;
 }
 
 export function packingLines(product: OrchidProduct): { label: string; value: string }[] {

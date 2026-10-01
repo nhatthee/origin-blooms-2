@@ -186,7 +186,8 @@ export function ProductsNavMenu({
       >
         {PRODUCT_FORMATS.map((item) => {
           const selected = activeFormat === item.id;
-          const navLabel = item.id === "cut" ? "Orchids" : "Loose Blooms";
+          const navLabel =
+            item.id === "cut" ? "Orchids" : item.id === "bouquet" ? "Bouquets" : "Loose Blooms";
           return (
             <a
               key={item.id}

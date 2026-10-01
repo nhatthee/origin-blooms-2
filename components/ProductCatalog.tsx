@@ -29,7 +29,12 @@ export function ProductCatalog({ products }: ProductCatalogProps) {
   const colorParam = searchParams.get("color") ?? "";
   const qParam = searchParams.get("q") ?? "";
   const deferredQ = useDeferredValue(qParam);
-  const eyebrow = format === "loose" ? "FRESH LOOSE BLOOMS" : "FRESH CUT ORCHIDS";
+  const eyebrow =
+    format === "loose"
+      ? "FRESH LOOSE BLOOMS"
+      : format === "bouquet"
+        ? "FRESH ORCHID'S BOUQUETS"
+        : "FRESH CUT ORCHIDS";
 
   const categoryProducts = useMemo(() => {
     const allowed = new Set(filterOrchids(format, family).map((item) => item.slug));

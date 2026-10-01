@@ -6,12 +6,16 @@ import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import {
   UNKNOWN_DETAIL,
   canAddToInquiry,
+  displayBouquetTrayCount,
   displayProductCode,
   displayProductColor,
   familyLabel,
   formatLabel,
+  formatNavLabel,
+  hasBouquetOptions,
   packingLines,
   productsHref,
+  stemsPerTrayRows,
   type OrchidProduct,
   type ProductFamily,
   type ProductFormat,
@@ -63,6 +67,18 @@ export function ProductDetail({ product }: ProductDetailProps) {
   const familyCrumbHref = productsHref(product.format, product.family);
   const detailEyebrow = product.detailEyebrow?.trim() || "Product Details";
   const detailTitle = product.detailName?.trim() || product.name;
+  const bouquetOptions = product.bouquetOptions ?? [];
+  const bouquetTrayCounts = product.bouquetTrayCounts ?? [];
+  const showBouquetDetails = hasBouquetOptions(product);
+  const trayRows = stemsPerTrayRows(product);
+  const showMokaraPendingPacking =
+    product.family === "mokara-aranda" && trayRows.length === 0 && !showBouquetDetails;
+  const showColor = Boolean(product.color?.trim()) || product.family !== "mokara-aranda";
+  const showProductCode =
+    !showBouquetDetails &&
+    (Boolean(product.number?.trim()) || product.family !== "mokara-aranda");
+  const metaColumns = [true, showColor, showProductCode].filter(Boolean).length;
+  const showLengthColumn = stemSizes.some((size) => Boolean(size.lengthRange?.trim()));
 
   useEffect(() => {
     if (!lightboxOpen) return;
@@ -136,7 +152,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
       <nav className="product-breadcrumb" aria-label="Breadcrumb">
         <Link href="/products">Products</Link>
         <span aria-hidden="true">/</span>
-        <Link href={formatCrumbHref}>{formatLabel(product.format)}</Link>
+        <Link href={formatCrumbHref}>{formatNavLabel(product.format)}</Link>
         <span aria-hidden="true">/</span>
         <Link href={familyCrumbHref}>{familyLabel(product.family)}</Link>
         <span aria-hidden="true">/</span>
@@ -193,31 +209,131 @@ export function ProductDetail({ product }: ProductDetailProps) {
         <div className="product-detail-copy">
           <p className="product-detail-section-title">{detailEyebrow}</p>
           <h1 id="product-detail-title">{detailTitle}</h1>
-          <dl className="product-detail-meta">
+          <dl
+            className={`product-detail-meta${
+              metaColumns === 2 ? " product-detail-meta--two" : metaColumns === 1 ? " product-detail-meta--one" : ""
+            }`}
+          >
             <div>
               <dt>Format</dt>
               <dd>{formatLabel(product.format)}</dd>
             </div>
-            <div>
-              <dt>Color</dt>
-              <dd>{displayProductColor(product)}</dd>
-            </div>
-            <div>
-              <dt>Code</dt>
-              <dd>{displayProductCode(product)}</dd>
-            </div>
+            {showColor ? (
+              <div>
+                <dt>Color</dt>
+                <dd>{displayProductColor(product)}</dd>
+              </div>
+            ) : null}
+            {showProductCode ? (
+              <div>
+                <dt>Code</dt>
+                <dd>{displayProductCode(product)}</dd>
+              </div>
+            ) : null}
           </dl>
+
+          {showBouquetDetails && product.description?.trim() ? (
+            <p className="product-detail-description">{product.description.trim()}</p>
+          ) : null}
+
+          {showBouquetDetails ? (
+            <div className="product-detail-bouquet-options">
+              <h2 className="product-detail-section-title">Bouquet Options</h2>
+              <div className="product-detail-table-scroll">
+                <table className="product-detail-info-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Variety</th>
+                      <th scope="col">Stems per bouquet</th>
+                      <th scope="col">Foliage</th>
+                      <th scope="col">Code</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bouquetOptions.map((option) => (
+                      <tr key={option.code}>
+                        <td>{option.variety}</td>
+                        <td>{option.stemsPerBouquet}</td>
+                        <td>{option.foliage}</td>
+                        <td className="product-detail-info-table-code">{option.code}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : null}
 
           <div className="product-detail-packing">
             <h2 className="product-detail-section-title">Packing Details</h2>
-            <dl>
-              {packing.map((row) => (
-                <div key={row.label}>
-                  <dt>{row.label}</dt>
-                  <dd>{row.value || UNKNOWN_DETAIL}</dd>
+            {showBouquetDetails && bouquetTrayCounts.length > 0 ? (
+              <>
+                {product.bouquetPackingNote?.trim() ? (
+                  <p className="product-detail-packing-note">{product.bouquetPackingNote.trim()}</p>
+                ) : null}
+                <p className="product-detail-packing-unit">Bouquets per tray</p>
+                <div className="product-detail-table-scroll">
+                  <table className="product-detail-info-table product-detail-info-table--numeric">
+                    <thead>
+                      <tr>
+                        <th scope="col">Code</th>
+                        <th scope="col">SS</th>
+                        <th scope="col">S</th>
+                        <th scope="col">M</th>
+                        <th scope="col">L</th>
+                        <th scope="col">LL</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bouquetTrayCounts.map((row) => (
+                        <tr key={row.code}>
+                          <th scope="row">{row.code}</th>
+                          <td>{displayBouquetTrayCount(row.ss)}</td>
+                          <td>{displayBouquetTrayCount(row.s)}</td>
+                          <td>{displayBouquetTrayCount(row.m)}</td>
+                          <td>{displayBouquetTrayCount(row.l)}</td>
+                          <td>{displayBouquetTrayCount(row.ll)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              ))}
-            </dl>
+              </>
+            ) : trayRows.length > 0 ? (
+              <div className="product-detail-table-scroll">
+                <table className="product-detail-info-table product-detail-info-table--numeric">
+                  <thead>
+                    <tr>
+                      <th scope="col">Size</th>
+                      <th scope="col">Stem length</th>
+                      <th scope="col">Stems per tray</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {trayRows.map((row) => (
+                      <tr key={row.size}>
+                        <th scope="row">{row.size}</th>
+                        <td>{row.stemLength}</td>
+                        <td>{row.stemsPerTray}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : showMokaraPendingPacking ? (
+              <p className="product-detail-packing-note">
+                Packing details will be confirmed with your quote.
+              </p>
+            ) : (
+              <dl>
+                {packing.map((row) => (
+                  <div key={row.label}>
+                    <dt>{row.label}</dt>
+                    <dd>{row.value || UNKNOWN_DETAIL}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
           </div>
 
           {orderReady ? (
@@ -234,7 +350,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
                       <thead>
                         <tr>
                           <th scope="col">Size</th>
-                          <th scope="col">Stem length</th>
+                          {showLengthColumn ? <th scope="col">Stem length</th> : null}
                           <th scope="col">Quantity (stems)</th>
                         </tr>
                       </thead>
@@ -242,7 +358,9 @@ export function ProductDetail({ product }: ProductDetailProps) {
                         {stemSizes.map((size) => (
                           <tr key={size.id}>
                             <th scope="row">{size.label}</th>
-                            <td>{size.lengthRange}</td>
+                            {showLengthColumn ? (
+                              <td>{size.lengthRange?.trim() || "—"}</td>
+                            ) : null}
                             <td>
                               <label className="visually-hidden" htmlFor={`${formId}-size-${size.id}`}>
                                 Quantity in stems for size {size.label}

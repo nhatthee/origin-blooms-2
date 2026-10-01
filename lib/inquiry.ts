@@ -64,8 +64,10 @@ function sizeOptionKey(sizeId: string) {
   return `size:${sizeId}`;
 }
 
-function sizeOptionLabel(sizeLabel: string, lengthRange: string) {
-  return `${sizeLabel} · ${lengthRange}`;
+function sizeOptionLabel(sizeLabel: string, lengthRange: string | undefined) {
+  const range = lengthRange?.trim();
+  if (!range) return sizeLabel;
+  return `${sizeLabel} · ${range}`;
 }
 
 export function buildInquiryItem(
