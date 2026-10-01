@@ -32,8 +32,8 @@ export function ProductCatalog({ products }: ProductCatalogProps) {
   const eyebrow = format === "loose" ? "FRESH LOOSE BLOOMS" : "FRESH CUT ORCHIDS";
 
   const categoryProducts = useMemo(() => {
-    const allowed = new Set(filterOrchids(format, family).map((item) => item.number));
-    return products.filter((item) => allowed.has(item.number));
+    const allowed = new Set(filterOrchids(format, family).map((item) => item.slug));
+    return products.filter((item) => allowed.has(item.slug));
   }, [family, format, products]);
 
   const colors = useMemo(

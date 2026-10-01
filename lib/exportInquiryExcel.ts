@@ -1,5 +1,5 @@
 import ExcelJS from "exceljs";
-import { formatLabel, getOrchidBySlug } from "../data/orchids";
+import { displayProductCode, formatLabel, getOrchidBySlug, PENDING_CONFIRMATION } from "../data/orchids";
 import { totalsByUnit, type InquiryItem } from "./inquiry";
 
 const HEADERS = [
@@ -49,7 +49,7 @@ export function inquiryItemsToExcelRows(items: InquiryItem[]): InquiryExcelRow[]
 
       return {
         product: item.name,
-        productCode: product?.number?.trim() ?? "",
+        productCode: product ? displayProductCode(product) : PENDING_CONFIRMATION,
         productType: formatLabel(item.format),
         // Fresh Loose Blooms: never invent size / stem length.
         size: isLoose ? "" : (item.sizeLabel?.trim() ?? ""),

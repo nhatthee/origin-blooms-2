@@ -6,6 +6,8 @@ import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import {
   UNKNOWN_DETAIL,
   canAddToInquiry,
+  displayProductCode,
+  displayProductColor,
   familyLabel,
   formatLabel,
   packingLines,
@@ -198,14 +200,12 @@ export function ProductDetail({ product }: ProductDetailProps) {
             </div>
             <div>
               <dt>Color</dt>
-              <dd>{product.color}</dd>
+              <dd>{displayProductColor(product)}</dd>
             </div>
-            {product.number ? (
-              <div>
-                <dt>Code</dt>
-                <dd>{product.number}</dd>
-              </div>
-            ) : null}
+            <div>
+              <dt>Code</dt>
+              <dd>{displayProductCode(product)}</dd>
+            </div>
           </dl>
 
           <div className="product-detail-packing">

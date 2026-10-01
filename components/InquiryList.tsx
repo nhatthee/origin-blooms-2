@@ -103,7 +103,10 @@ export function InquiryList() {
                     <h2>
                       <a href={`/products/${group.slug}`}>{group.name}</a>
                     </h2>
-                    <p className="inquiry-item-meta">{group.category}</p>
+                    <p className="inquiry-item-meta">
+                      {group.category}
+                      {group.code ? ` · Code ${group.code}` : ""}
+                    </p>
                     {group.stemTotal > 0 ? (
                       <p className="inquiry-item-subtotal">
                         Product total: {group.stemTotal} stems

@@ -1,4 +1,8 @@
-import { orchids, type ProductFormat } from "../data/orchids";
+import {
+  displayProductCode,
+  orchids,
+  type ProductFormat,
+} from "../data/orchids";
 
 export const INQUIRY_STORAGE_KEY = "origin-blooms:inquiry-v2";
 
@@ -10,6 +14,11 @@ export type InquiryItem = {
   image: string;
   format: ProductFormat;
   category: string;
+  /**
+   * Display-only product code (may be “Pending confirmation”).
+   * Never used as a unique ID — identity is always slug + optionKey.
+   */
+  code: string;
   /** Display label for size / pack (e.g. "SS · 35–40 cm") */
   optionLabel: string;
   /** Internal key used to merge matching lines */
@@ -32,6 +41,7 @@ export type InquiryProductGroup = {
   name: string;
   image: string;
   category: string;
+  code: string;
   format: ProductFormat;
   lines: InquiryItem[];
   /** Sum of stem quantities in this product group (0 if no stem lines) */
@@ -95,6 +105,7 @@ export function buildInquiryItem(
     image: product.image,
     format: product.format,
     category: product.category,
+    code: displayProductCode(product),
     optionLabel,
     optionKey,
     sizeId,
@@ -212,6 +223,7 @@ function normalizeStoredItem(entry: unknown): InquiryItem | null {
     image: product.image,
     format: product.format,
     category: product.category,
+    code: displayProductCode(product),
     optionLabel,
     optionKey,
     sizeId,
@@ -241,11 +253,12 @@ export function writeInquiryToStorage(items: InquiryItem[]): void {
 }
 
 export function formatInquiryLine(item: InquiryItem): string {
+  const codePart = item.code ? ` [${item.code}]` : "";
   if (item.sizeLabel && item.lengthRange) {
-    return `${item.name} — ${item.sizeLabel} (${item.lengthRange}): ${item.quantity} ${item.unit}`;
+    return `${item.name}${codePart} — ${item.sizeLabel} (${item.lengthRange}): ${item.quantity} ${item.unit}`;
   }
   const option = item.optionLabel ? ` — ${item.optionLabel}` : "";
-  return `${item.name}${option}: ${item.quantity} ${item.unit}`;
+  return `${item.name}${codePart}${option}: ${item.quantity} ${item.unit}`;
 }
 
 export function groupInquiryByProduct(items: InquiryItem[]): InquiryProductGroup[] {
@@ -260,6 +273,7 @@ export function groupInquiryByProduct(items: InquiryItem[]): InquiryProductGroup
         name: item.name,
         image: item.image,
         category: item.category,
+        code: item.code,
         format: item.format,
         lines: [],
         stemTotal: 0,
@@ -299,7 +313,8 @@ export function formatInquirySummary(items: InquiryItem[]): {
   const groups = groupInquiryByProduct(items);
   const lines: string[] = [];
   for (const group of groups) {
-    lines.push(`${group.name}:`);
+    const codeNote = group.code ? ` [${group.code}]` : "";
+    lines.push(`${group.name}${codeNote}:`);
     for (const item of group.lines) {
       if (item.sizeLabel && item.lengthRange) {
         lines.push(
@@ -441,6 +456,7 @@ export function sanitizeInquirySubmission(raw: unknown): InquiryItem[] | null {
       image: product.image,
       format: product.format,
       category: product.category,
+      code: displayProductCode(product),
       optionLabel,
       optionKey,
       sizeId,

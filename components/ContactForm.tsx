@@ -335,7 +335,10 @@ function ContactFormInner() {
                   </div>
                   <div className="inquiry-review-item-copy">
                     <p className="inquiry-review-name">{group.name}</p>
-                    <p className="inquiry-review-meta">{group.category}</p>
+                    <p className="inquiry-review-meta">
+                      {group.category}
+                      {group.code ? ` · Code ${group.code}` : ""}
+                    </p>
                     <ul className="inquiry-review-size-list">
                       {group.lines.map((item) => (
                         <li key={item.id}>
