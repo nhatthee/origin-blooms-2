@@ -1,5 +1,5 @@
 import ExcelJS from "exceljs";
-import { displayProductCode, formatLabel, getOrchidBySlug, PENDING_CONFIRMATION } from "../data/orchids";
+import { formatLabel, PENDING_CONFIRMATION } from "../data/orchids";
 import { totalsByUnit, type InquiryItem } from "./inquiry";
 
 const HEADERS = [
@@ -44,16 +44,18 @@ export function inquiryItemsToExcelRows(items: InquiryItem[]): InquiryExcelRow[]
   return items
     .filter((item) => item.quantity > 0)
     .map((item) => {
-      const product = getOrchidBySlug(item.slug);
       const isLoose = item.format === "loose";
 
       return {
         product: item.name,
-        productCode: product ? displayProductCode(product) : PENDING_CONFIRMATION,
+        productCode: item.code?.trim() || PENDING_CONFIRMATION,
         productType: formatLabel(item.format),
-        // Fresh Loose Blooms: never invent size / stem length.
-        size: isLoose ? "" : (item.sizeLabel?.trim() ?? ""),
-        stemLength: isLoose ? "" : stemLengthForExcel(item.lengthRange),
+        // Loose pack lines use confirmed pack-size labels; otherwise leave size blank.
+        // Bouquet lines carry size (SS–LL) but no stem-length range.
+        size: isLoose
+          ? (item.optionLabel?.trim() ?? "")
+          : (item.sizeLabel?.trim() ?? ""),
+        stemLength: isLoose || item.format === "bouquet" ? "" : stemLengthForExcel(item.lengthRange),
         quantity: item.quantity,
         unit: item.unit,
       };

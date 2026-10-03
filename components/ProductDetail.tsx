@@ -4,7 +4,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import {
+  DENDROBIUM_SUPPLIER_PACKING,
+  LOOSE_BLOOM_MASTER_CARTON_NOTE,
+  LOOSE_BLOOM_PACKAGING_NOTE,
+  LOOSE_BLOOM_PACKING_ROWS,
+  MOKARA_BOX_DIMENSION_REMARKS,
   UNKNOWN_DETAIL,
+  bouquetPackingSizeEntries,
   canAddToInquiry,
   displayBouquetTrayCount,
   displayProductCode,
@@ -13,6 +19,9 @@ import {
   formatLabel,
   formatNavLabel,
   hasBouquetOptions,
+  isDendrobiumCutProduct,
+  isLooseBloomProduct,
+  looseBloomTotalFromPackQuantities,
   packingLines,
   productsHref,
   stemsPerTrayRows,
@@ -21,6 +30,7 @@ import {
   type ProductFormat,
 } from "../data/orchids";
 import { parseNonNegativeIntInput, parsePositiveIntInput } from "../lib/inquiry";
+import { BouquetInquiryForm } from "./BouquetInquiryForm";
 import { useInquiry } from "./InquiryProvider";
 
 type ProductDetailProps = {
@@ -38,7 +48,7 @@ function initialSizeQuantities(sizeIds: string[]): Record<string, string> {
 }
 
 export function ProductDetail({ product }: ProductDetailProps) {
-  const { addItem, addStemSizeQuantities } = useInquiry();
+  const { addItem, addStemSizeQuantities, addLoosePackQuantities } = useInquiry();
   const formId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
   const images = product.images.length
@@ -48,6 +58,8 @@ export function ProductDetail({ product }: ProductDetailProps) {
   const stemSizes = product.order?.stemSizes ?? [];
   const packOptions = product.order?.packOptions ?? [];
   const hasStemSizes = stemSizes.length > 0;
+  const isLooseProduct = isLooseBloomProduct(product);
+  const hasLoosePacks = isLooseProduct && packOptions.length > 0;
   const unit = product.order?.unit ?? "";
 
   const [activeIndex, setActiveIndex] = useState(0);
@@ -56,6 +68,9 @@ export function ProductDetail({ product }: ProductDetailProps) {
   const [quantityInput, setQuantityInput] = useState("1");
   const [sizeQuantities, setSizeQuantities] = useState(() =>
     initialSizeQuantities(stemSizes.map((size) => size.id)),
+  );
+  const [loosePackQuantities, setLoosePackQuantities] = useState(() =>
+    initialSizeQuantities(packOptions.map((pack) => pack.id)),
   );
   const [quantityError, setQuantityError] = useState("");
   const [addedNote, setAddedNote] = useState("");
@@ -73,12 +88,25 @@ export function ProductDetail({ product }: ProductDetailProps) {
   const trayRows = stemsPerTrayRows(product);
   const showMokaraPendingPacking =
     product.family === "mokara-aranda" && trayRows.length === 0 && !showBouquetDetails;
+  const showMokaraBoxDimensions =
+    product.family === "mokara-aranda" && !showBouquetDetails;
+  const showDendrobiumPacking = isDendrobiumCutProduct(product) && !showBouquetDetails;
   const showColor = Boolean(product.color?.trim()) || product.family !== "mokara-aranda";
   const showProductCode =
     !showBouquetDetails &&
     (Boolean(product.number?.trim()) || product.family !== "mokara-aranda");
   const metaColumns = [true, showColor, showProductCode].filter(Boolean).length;
   const showLengthColumn = stemSizes.some((size) => Boolean(size.lengthRange?.trim()));
+
+  const loosePackTotals = Object.fromEntries(
+    packOptions.map((pack) => [
+      pack.id,
+      parseNonNegativeIntInput(loosePackQuantities[pack.id] ?? "0") ?? 0,
+    ]),
+  );
+  const totalLooseBlooms = hasLoosePacks
+    ? looseBloomTotalFromPackQuantities(loosePackTotals)
+    : 0;
 
   useEffect(() => {
     if (!lightboxOpen) return;
@@ -126,6 +154,33 @@ export function ProductDetail({ product }: ProductDetailProps) {
         return;
       }
       setSizeQuantities(initialSizeQuantities(stemSizes.map((size) => size.id)));
+      setAddedNote("Added to inquiry list.");
+      return;
+    }
+
+    if (hasLoosePacks) {
+      const parsed: Record<string, number> = {};
+      for (const pack of packOptions) {
+        const raw = loosePackQuantities[pack.id] ?? "0";
+        const value = parseNonNegativeIntInput(raw);
+        if (value === null) {
+          setQuantityError("Enter whole numbers only (0 or greater) for each pack size.");
+          return;
+        }
+        parsed[pack.id] = value;
+      }
+      const selected = Object.values(parsed).some((qty) => qty > 0);
+      if (!selected) {
+        setQuantityError("Enter a quantity greater than zero for at least one pack size.");
+        return;
+      }
+      setQuantityError("");
+      const ok = addLoosePackQuantities(product.slug, parsed);
+      if (!ok) {
+        setQuantityError("Unable to add this selection. Please check pack sizes and quantities.");
+        return;
+      }
+      setLoosePackQuantities(initialSizeQuantities(packOptions.map((pack) => pack.id)));
       setAddedNote("Added to inquiry list.");
       return;
     }
@@ -236,34 +291,6 @@ export function ProductDetail({ product }: ProductDetailProps) {
             <p className="product-detail-description">{product.description.trim()}</p>
           ) : null}
 
-          {showBouquetDetails ? (
-            <div className="product-detail-bouquet-options">
-              <h2 className="product-detail-section-title">Bouquet Options</h2>
-              <div className="product-detail-table-scroll">
-                <table className="product-detail-info-table">
-                  <thead>
-                    <tr>
-                      <th scope="col">Variety</th>
-                      <th scope="col">Stems per bouquet</th>
-                      <th scope="col">Foliage</th>
-                      <th scope="col">Code</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bouquetOptions.map((option) => (
-                      <tr key={option.code}>
-                        <td>{option.variety}</td>
-                        <td>{option.stemsPerBouquet}</td>
-                        <td>{option.foliage}</td>
-                        <td className="product-detail-info-table-code">{option.code}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ) : null}
-
           <div className="product-detail-packing">
             <h2 className="product-detail-section-title">Packing Details</h2>
             {showBouquetDetails && bouquetTrayCounts.length > 0 ? (
@@ -272,58 +299,168 @@ export function ProductDetail({ product }: ProductDetailProps) {
                   <p className="product-detail-packing-note">{product.bouquetPackingNote.trim()}</p>
                 ) : null}
                 <p className="product-detail-packing-unit">Bouquets per tray</p>
+                <div className="product-detail-packing-desktop">
+                  <div className="product-detail-table-scroll">
+                    <table className="product-detail-info-table product-detail-info-table--numeric product-detail-bouquet-packing-table">
+                      <thead>
+                        <tr>
+                          <th scope="col">Code</th>
+                          <th scope="col">SS</th>
+                          <th scope="col">S</th>
+                          <th scope="col">M</th>
+                          <th scope="col">L</th>
+                          <th scope="col">LL</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {bouquetTrayCounts.map((row) => (
+                          <tr key={row.code}>
+                            <th scope="row">{row.code}</th>
+                            <td>{displayBouquetTrayCount(row.ss)}</td>
+                            <td>{displayBouquetTrayCount(row.s)}</td>
+                            <td>{displayBouquetTrayCount(row.m)}</td>
+                            <td>{displayBouquetTrayCount(row.l)}</td>
+                            <td>{displayBouquetTrayCount(row.ll)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <ul className="product-detail-packing-mobile">
+                  {bouquetTrayCounts.map((row) => (
+                    <li key={row.code} className="product-detail-packing-mobile-block">
+                      <p className="product-detail-packing-mobile-code">{row.code}</p>
+                      <dl className="product-detail-packing-mobile-sizes">
+                        {bouquetPackingSizeEntries(row).map((entry) => (
+                          <div key={entry.size}>
+                            <dt>{entry.size}</dt>
+                            <dd>{entry.count}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : trayRows.length > 0 ? (
+              <>
                 <div className="product-detail-table-scroll">
                   <table className="product-detail-info-table product-detail-info-table--numeric">
                     <thead>
                       <tr>
-                        <th scope="col">Code</th>
-                        <th scope="col">SS</th>
-                        <th scope="col">S</th>
-                        <th scope="col">M</th>
-                        <th scope="col">L</th>
-                        <th scope="col">LL</th>
+                        <th scope="col">Size</th>
+                        <th scope="col">Stem length</th>
+                        <th scope="col">Stems per tray</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {bouquetTrayCounts.map((row) => (
-                        <tr key={row.code}>
-                          <th scope="row">{row.code}</th>
-                          <td>{displayBouquetTrayCount(row.ss)}</td>
-                          <td>{displayBouquetTrayCount(row.s)}</td>
-                          <td>{displayBouquetTrayCount(row.m)}</td>
-                          <td>{displayBouquetTrayCount(row.l)}</td>
-                          <td>{displayBouquetTrayCount(row.ll)}</td>
+                      {trayRows.map((row) => (
+                        <tr key={row.size}>
+                          <th scope="row">{row.size}</th>
+                          <td>{row.stemLength}</td>
+                          <td>{row.stemsPerTray}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
+                {showMokaraBoxDimensions ? (
+                  <div className="product-detail-packing-remarks">
+                    <h3 className="product-detail-packing-remarks-title">Box Dimensions</h3>
+                    <ul className="product-detail-packing-remarks-list">
+                      {MOKARA_BOX_DIMENSION_REMARKS.map((row) => (
+                        <li key={row.label}>
+                          <strong>{row.label}:</strong> {row.detail}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
               </>
-            ) : trayRows.length > 0 ? (
-              <div className="product-detail-table-scroll">
-                <table className="product-detail-info-table product-detail-info-table--numeric">
-                  <thead>
-                    <tr>
-                      <th scope="col">Size</th>
-                      <th scope="col">Stem length</th>
-                      <th scope="col">Stems per tray</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {trayRows.map((row) => (
-                      <tr key={row.size}>
-                        <th scope="row">{row.size}</th>
-                        <td>{row.stemLength}</td>
-                        <td>{row.stemsPerTray}</td>
+            ) : showDendrobiumPacking ? (
+              <>
+                <div className="product-detail-table-scroll">
+                  <table className="product-detail-info-table product-detail-info-table--numeric">
+                    <thead>
+                      <tr>
+                        <th scope="col">Size</th>
+                        <th scope="col">Supplier standard length</th>
+                        <th scope="col">Stems per tray</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {DENDROBIUM_SUPPLIER_PACKING.map((row) => (
+                        <tr key={row.size}>
+                          <th scope="row">{row.size}</th>
+                          <td>{row.supplierStandardLength}</td>
+                          <td>{row.stemsPerTray}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="product-detail-packing-remarks">
+                  <h3 className="product-detail-packing-remarks-title">Box Dimensions</h3>
+                  <ul className="product-detail-packing-remarks-list">
+                    <li>
+                      <strong>Sizes S, M &amp; L:</strong> 39 × 70 × 43 cm · 5 trays per box
+                    </li>
+                    <li>
+                      <strong>Size LL:</strong> 37 × 80 × 42 cm · 5 trays per box
+                    </li>
+                  </ul>
+                </div>
+              </>
             ) : showMokaraPendingPacking ? (
-              <p className="product-detail-packing-note">
-                Packing details will be confirmed with your quote.
-              </p>
+              <>
+                <p className="product-detail-packing-note">
+                  Packing details will be confirmed with your quote.
+                </p>
+                <div className="product-detail-packing-remarks">
+                  <h3 className="product-detail-packing-remarks-title">Box Dimensions</h3>
+                  <ul className="product-detail-packing-remarks-list">
+                    {MOKARA_BOX_DIMENSION_REMARKS.map((row) => (
+                      <li key={row.label}>
+                        <strong>{row.label}:</strong> {row.detail}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </>
+            ) : isLooseProduct ? (
+              <div className="product-detail-loose-packing">
+                <div className="product-detail-table-scroll product-detail-loose-packing-scroll">
+                  <table className="product-detail-info-table product-detail-loose-packing-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Pack size</th>
+                        <th scope="col">Inner pack</th>
+                        <th scope="col">Export packing</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {LOOSE_BLOOM_PACKING_ROWS.map((row) => (
+                        <tr key={row.packSize}>
+                          <th scope="row">{row.packSize}</th>
+                          <td>{row.innerPack}</td>
+                          <td>{row.exportPacking}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <dl className="product-detail-loose-packing-notes">
+                  <div>
+                    <dt>Master Carton</dt>
+                    <dd>{LOOSE_BLOOM_MASTER_CARTON_NOTE}</dd>
+                  </div>
+                  <div>
+                    <dt>Packaging</dt>
+                    <dd>{LOOSE_BLOOM_PACKAGING_NOTE}</dd>
+                  </div>
+                </dl>
+              </div>
             ) : (
               <dl>
                 {packing.map((row) => (
@@ -336,8 +473,12 @@ export function ProductDetail({ product }: ProductDetailProps) {
             )}
           </div>
 
-          {orderReady ? (
-            <form className="product-detail-order" onSubmit={handleAdd} noValidate>
+          {orderReady && !showBouquetDetails ? (
+            <form
+              className={`product-detail-order${hasLoosePacks ? " product-detail-order--loose" : ""}`}
+              onSubmit={handleAdd}
+              noValidate
+            >
               {hasStemSizes ? (
                 <div className="product-size-table-wrap">
                   <h2 className="product-size-table-title">Stem sizes</h2>
@@ -388,6 +529,71 @@ export function ProductDetail({ product }: ProductDetailProps) {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                  {quantityError ? (
+                    <p className="product-detail-error" role="alert">
+                      {quantityError}
+                    </p>
+                  ) : null}
+                </div>
+              ) : hasLoosePacks ? (
+                <div className="product-size-table-wrap product-detail-loose-qty">
+                  <h2 className="product-size-table-title">Loose Bloom Quantity</h2>
+                  <p className="product-size-table-hint" id={`${formId}-loose-hint`}>
+                    Enter the number of packs you need.
+                  </p>
+                  <div className="product-size-table-scroll">
+                    <table className="product-size-table product-detail-loose-qty-table">
+                      <thead>
+                        <tr>
+                          <th scope="col">Pack size</th>
+                          <th scope="col">Quantity</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {packOptions.map((pack) => (
+                          <tr key={pack.id}>
+                            <th scope="row">{pack.label}</th>
+                            <td>
+                              <label
+                                className="visually-hidden"
+                                htmlFor={`${formId}-loose-${pack.id}`}
+                              >
+                                Quantity of packs for {pack.label}
+                              </label>
+                              <input
+                                id={`${formId}-loose-${pack.id}`}
+                                className="product-size-qty-input"
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                value={loosePackQuantities[pack.id] ?? "0"}
+                                onChange={(event) => {
+                                  const next = event.target.value;
+                                  setLoosePackQuantities((prev) => ({
+                                    ...prev,
+                                    [pack.id]: next,
+                                  }));
+                                  setQuantityError("");
+                                  setAddedNote("");
+                                }}
+                                aria-describedby={`${formId}-loose-hint`}
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div
+                    className="product-detail-loose-total"
+                    aria-live="polite"
+                    aria-atomic="true"
+                  >
+                    <p className="product-detail-loose-total-label">Total Blooms</p>
+                    <p className="product-detail-loose-total-value">
+                      {totalLooseBlooms.toLocaleString("en-US")}
+                    </p>
                   </div>
                   {quantityError ? (
                     <p className="product-detail-error" role="alert">
@@ -450,7 +656,11 @@ export function ProductDetail({ product }: ProductDetailProps) {
                 </>
               )}
 
-              <div className="product-detail-actions">
+              <div
+                className={`product-detail-actions${
+                  hasLoosePacks ? " product-detail-actions--center" : ""
+                }`}
+              >
                 <button className="button button-primary" type="submit">
                   Add to inquiry
                 </button>
@@ -464,15 +674,29 @@ export function ProductDetail({ product }: ProductDetailProps) {
                 </p>
               ) : null}
             </form>
-          ) : (
+          ) : !showBouquetDetails ? (
             <div className="product-detail-actions">
               <a className="button button-primary" href={inquireHref}>
                 Inquire about this variety
               </a>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
+
+      {showBouquetDetails ? (
+        <div className="product-detail-bouquet-options">
+          <div className="product-detail-bouquet-panel">
+            <h2 className="product-detail-section-title">Bouquet Options</h2>
+            <p className="product-detail-bouquet-hint">
+              Choose a size and enter bouquet quantities for each code. Leave 0 for
+              sizes you are not ordering. Use Add another size to request more than one
+              size of the same code.
+            </p>
+            <BouquetInquiryForm product={product} options={bouquetOptions} />
+          </div>
+        </div>
+      ) : null}
 
       {lightboxOpen ? (
         <div

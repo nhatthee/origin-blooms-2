@@ -100,6 +100,55 @@ function CloseIcon() {
   );
 }
 
+function LoginPersonIcon() {
+  return (
+    <svg
+      className="header-icon-svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <circle cx="12" cy="8" r="3.25" stroke="currentColor" strokeWidth="1.75" />
+      <path
+        d="M5.25 19.25c.9-3.35 3.2-5 6.75-5s5.85 1.65 6.75 5"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function InquiryBagIcon() {
+  return (
+    <svg
+      className="header-icon-svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d="M6.5 8.5h11l-.85 10.2a1.5 1.5 0 0 1-1.5 1.3H8.85a1.5 1.5 0 0 1-1.5-1.3L6.5 8.5Z"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9 8.5V7a3 3 0 0 1 6 0v1.5"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function lockBodyScroll(scrollY: number) {
   const { body, documentElement } = document;
   documentElement.classList.add("mobile-nav-open");
@@ -133,6 +182,7 @@ export function SiteHeader({ homePage = false }: SiteHeaderProps) {
     inquiryReady && inquiryCount > 0
       ? `Inquiry (${inquiryCount})`
       : "Inquiry";
+  const showInquiryBadge = inquiryReady && inquiryCount > 0;
   const [menuOpen, setMenuOpen] = useState(false);
   const [panelMounted, setPanelMounted] = useState(false);
   const [panelRevealed, setPanelRevealed] = useState(false);
@@ -279,20 +329,33 @@ export function SiteHeader({ homePage = false }: SiteHeaderProps) {
           <a href="/contact" aria-current={pageCurrent(pathname, "/contact")}>
             Contact
           </a>
-          <a
-            href="/inquiry"
-            className="inquiry-nav-link"
-            aria-current={inquiryCurrent}
-          >
-            {inquiryLabel}
-          </a>
           <a href="/resources" aria-current={pageCurrent(pathname, "/resources")}>
             Resources
           </a>
         </nav>
-        <a className="header-cta" href="/login" aria-current={pageCurrent(pathname, "/login")}>
-          Login
-        </a>
+        <div className="header-icon-actions" aria-label="Account and inquiry">
+          <a
+            className="header-icon-link"
+            href="/login"
+            aria-label="Login"
+            aria-current={pageCurrent(pathname, "/login")}
+          >
+            <LoginPersonIcon />
+          </a>
+          <a
+            className="header-icon-link header-icon-link--bag"
+            href="/inquiry"
+            aria-label="View inquiry list"
+            aria-current={inquiryCurrent}
+          >
+            <InquiryBagIcon />
+            {showInquiryBadge ? (
+              <span className="header-inquiry-badge" aria-hidden="true">
+                {inquiryCount > 99 ? "99+" : inquiryCount}
+              </span>
+            ) : null}
+          </a>
+        </div>
       </div>
       <div className="mobile-header-actions">
         <a

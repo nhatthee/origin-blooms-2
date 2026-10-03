@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { PENDING_CONFIRMATION } from "../data/orchids";
 import {
   groupInquiryByProduct,
   parseNonNegativeIntInput,
@@ -105,11 +106,18 @@ export function InquiryList() {
                     </h2>
                     <p className="inquiry-item-meta">
                       {group.category}
-                      {group.code ? ` · Code ${group.code}` : ""}
+                      {group.code && group.code !== PENDING_CONFIRMATION
+                        ? ` · Code ${group.code}`
+                        : ""}
                     </p>
                     {group.stemTotal > 0 ? (
                       <p className="inquiry-item-subtotal">
                         Product total: {group.stemTotal} stems
+                      </p>
+                    ) : null}
+                    {group.bloomTotal > 0 ? (
+                      <p className="inquiry-item-subtotal">
+                        Total Blooms: {group.bloomTotal.toLocaleString("en-US")}
                       </p>
                     ) : null}
                   </div>
@@ -118,7 +126,13 @@ export function InquiryList() {
                     {group.lines.map((item) => (
                       <li className="inquiry-size-line" key={item.id}>
                         <div className="inquiry-size-line-copy">
-                          {item.sizeLabel && item.lengthRange ? (
+                          {item.format === "bouquet" && item.sizeLabel ? (
+                            <>
+                              <p className="inquiry-size-line-label">
+                                {item.code} · Size {item.sizeLabel}
+                              </p>
+                            </>
+                          ) : item.sizeLabel && item.lengthRange ? (
                             <>
                               <p className="inquiry-size-line-label">
                                 Size {item.sizeLabel}

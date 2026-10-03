@@ -11,6 +11,8 @@ import {
 } from "react";
 import {
   buildInquiryItem,
+  buildInquiryItemsForBouquetOptions,
+  buildInquiryItemsForLoosePacks,
   buildInquiryItemsForStemSizes,
   INQUIRY_STORAGE_KEY,
   mergeInquiryItems,
@@ -19,6 +21,7 @@ import {
   removeInquiryItem,
   updateInquiryQuantity,
   writeInquiryToStorage,
+  type BouquetInquiryLineDraft,
   type InquiryDraft,
   type InquiryItem,
 } from "../lib/inquiry";
@@ -29,6 +32,8 @@ type InquiryContextValue = {
   count: number;
   addItem: (slug: string, draft: InquiryDraft) => boolean;
   addStemSizeQuantities: (slug: string, quantities: Record<string, number>) => boolean;
+  addBouquetQuantities: (slug: string, lines: BouquetInquiryLineDraft[]) => boolean;
+  addLoosePackQuantities: (slug: string, quantities: Record<string, number>) => boolean;
   setQuantity: (id: string, quantity: number) => void;
   removeItem: (id: string) => void;
   clear: () => void;
@@ -74,6 +79,26 @@ export function InquiryProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const addBouquetQuantities = useCallback(
+    (slug: string, lines: BouquetInquiryLineDraft[]) => {
+      const nextItems = buildInquiryItemsForBouquetOptions(slug, lines);
+      if (!nextItems) return false;
+      setItems((current) => mergeManyInquiryItems(current, nextItems));
+      return true;
+    },
+    [],
+  );
+
+  const addLoosePackQuantities = useCallback(
+    (slug: string, quantities: Record<string, number>) => {
+      const nextItems = buildInquiryItemsForLoosePacks(slug, quantities);
+      if (!nextItems) return false;
+      setItems((current) => mergeManyInquiryItems(current, nextItems));
+      return true;
+    },
+    [],
+  );
+
   const setQuantity = useCallback((id: string, quantity: number) => {
     setItems((current) => updateInquiryQuantity(current, id, quantity));
   }, []);
@@ -91,11 +116,23 @@ export function InquiryProvider({ children }: { children: ReactNode }) {
       count: items.length,
       addItem,
       addStemSizeQuantities,
+      addBouquetQuantities,
+      addLoosePackQuantities,
       setQuantity,
       removeItem,
       clear,
     }),
-    [items, ready, addItem, addStemSizeQuantities, setQuantity, removeItem, clear],
+    [
+      items,
+      ready,
+      addItem,
+      addStemSizeQuantities,
+      addBouquetQuantities,
+      addLoosePackQuantities,
+      setQuantity,
+      removeItem,
+      clear,
+    ],
   );
 
   return <InquiryContext.Provider value={value}>{children}</InquiryContext.Provider>;

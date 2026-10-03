@@ -25,6 +25,7 @@ import {
   type ContactFieldErrors,
   type ContactFormValues,
 } from "../lib/contact";
+import { PENDING_CONFIRMATION } from "../data/orchids";
 import { formatInquirySummary, groupInquiryByProduct, totalStems, totalsByUnit } from "../lib/inquiry";
 import { Arrow } from "./Arrow";
 import { useInquiry } from "./InquiryProvider";
@@ -337,12 +338,23 @@ function ContactFormInner() {
                     <p className="inquiry-review-name">{group.name}</p>
                     <p className="inquiry-review-meta">
                       {group.category}
-                      {group.code ? ` · Code ${group.code}` : ""}
+                      {group.code && group.code !== PENDING_CONFIRMATION
+                        ? ` · Code ${group.code}`
+                        : ""}
                     </p>
                     <ul className="inquiry-review-size-list">
                       {group.lines.map((item) => (
                         <li key={item.id}>
-                          {item.sizeLabel && item.lengthRange ? (
+                          {item.format === "bouquet" && item.sizeLabel ? (
+                            <>
+                              <span>
+                                {item.code} · Size {item.sizeLabel}
+                              </span>
+                              <strong>
+                                {item.quantity} {item.unit}
+                              </strong>
+                            </>
+                          ) : item.sizeLabel && item.lengthRange ? (
                             <>
                               <span>
                                 {item.sizeLabel} ({item.lengthRange})
@@ -365,6 +377,11 @@ function ContactFormInner() {
                     {group.stemTotal > 0 ? (
                       <p className="inquiry-review-product-total">
                         Product total: {group.stemTotal} stems
+                      </p>
+                    ) : null}
+                    {group.bloomTotal > 0 ? (
+                      <p className="inquiry-review-product-total">
+                        Total Blooms: {group.bloomTotal.toLocaleString("en-US")}
                       </p>
                     ) : null}
                   </div>
@@ -393,7 +410,7 @@ function ContactFormInner() {
                 ))}
               </ul>
               <p className="inquiry-review-totals-note">
-                Totals are listed separately by unit — stems, bunches, packs, and boxes
+                Totals are listed separately by unit — stems, bouquets, packs, and boxes
                 are never combined into one number.
               </p>
             </div>

@@ -52,6 +52,81 @@ export type ProductOrderOptions = {
 };
 
 /**
+ * Shared Loose Blooms pack sizes (packs × blooms).
+ * Used by both Sonia and Big White detail / inquiry — do not invent cartons or weights.
+ */
+export const LOOSE_BLOOM_PACK_OPTIONS: ProductPackOption[] = [
+  { id: "100", label: "100 Blooms" },
+  { id: "500", label: "500 Blooms" },
+  { id: "1000", label: "1,000 Blooms" },
+  { id: "5000", label: "5,000 Blooms / Master" },
+];
+
+/** Blooms represented by one pack of each Loose Bloom pack option. */
+export const LOOSE_BLOOM_PACK_BLOOMS: Record<string, number> = {
+  "100": 100,
+  "500": 500,
+  "1000": 1000,
+  "5000": 5000,
+};
+
+export type LooseBloomPackingRow = {
+  packSize: string;
+  innerPack: string;
+  exportPacking: string;
+};
+
+export const LOOSE_BLOOM_PACKING_ROWS: LooseBloomPackingRow[] = [
+  {
+    packSize: "100 Blooms",
+    innerPack: "1 × 100-bloom pack",
+    exportPacking: "Consolidated",
+  },
+  {
+    packSize: "500 Blooms",
+    innerPack: "1 × 500-bloom pack",
+    exportPacking: "Consolidated",
+  },
+  {
+    packSize: "1,000 Blooms",
+    innerPack: "1 × 1,000-bloom pack",
+    exportPacking: "Wholesale Pack",
+  },
+  {
+    packSize: "5,000 Blooms",
+    innerPack: "5 × 1,000-bloom packs",
+    exportPacking: "1 Master Carton",
+  },
+];
+
+export const LOOSE_BLOOM_MASTER_CARTON_NOTE = "5,000 loose blooms per master carton";
+export const LOOSE_BLOOM_PACKAGING_NOTE =
+  "Protective inner packing designed to preserve petal shape and freshness during transit.";
+
+const LOOSE_BLOOM_ORDER: ProductOrderOptions = {
+  unit: "packs",
+  packOptions: LOOSE_BLOOM_PACK_OPTIONS,
+};
+
+export function isLooseBloomProduct(
+  product: Pick<{ format: ProductFormat }, "format">,
+): boolean {
+  return product.format === "loose";
+}
+
+export function looseBloomTotalFromPackQuantities(
+  quantities: Record<string, number>,
+): number {
+  let total = 0;
+  for (const pack of LOOSE_BLOOM_PACK_OPTIONS) {
+    const qty = quantities[pack.id] ?? 0;
+    if (!Number.isFinite(qty) || qty <= 0) continue;
+    total += (LOOSE_BLOOM_PACK_BLOOMS[pack.id] ?? 0) * qty;
+  }
+  return total;
+}
+
+/**
  * Canonical stem-length ranges by size id — single source for catalog, packing,
  * inquiry, email, and Excel. Do not duplicate these strings elsewhere.
  */
@@ -91,6 +166,60 @@ const MOKARA_CUT_ORDER: ProductOrderOptions = {
   unit: "stems",
   stemSizes: MOKARA_CUT_STEM_SIZES,
 };
+
+/**
+ * Shared Dendrobium cut packing (category header / supplier table).
+ * Used by every Dendrobium stem variety including dyed — do not duplicate per SKU.
+ * “Supplier standard length” may differ from CUT_STEM_LENGTHS used by Stem sizes /
+ * inquiry until a single length set is confirmed for the whole system.
+ */
+export type DendrobiumPackingRow = {
+  size: string;
+  supplierStandardLength: string;
+  stemsPerTray: string;
+};
+
+export const DENDROBIUM_SUPPLIER_PACKING: DendrobiumPackingRow[] = [
+  { size: "SS", supplierStandardLength: "35–40 cm", stemsPerTray: "100" },
+  { size: "S", supplierStandardLength: "41–45 cm", stemsPerTray: "90" },
+  { size: "M", supplierStandardLength: "46–49 cm", stemsPerTray: "90" },
+  { size: "L", supplierStandardLength: "50–55 cm", stemsPerTray: "80" },
+  { size: "LL", supplierStandardLength: "56–60 cm", stemsPerTray: "70" },
+];
+
+/**
+ * Confirmed Dendrobium USA box packing (shared across the category).
+ * Dimensions are centimetres; side order (L/W/H) is not labeled — unknown.
+ * SS has no confirmed box row — do not invent one.
+ * Alternate LL carton 37 × 75 × 42 (“Lei, LL”) remains unconfirmed for display.
+ */
+export type DendrobiumBoxPackingRow = {
+  size: string;
+  boxDimensionsCm: string;
+  traysPerBox: string;
+};
+
+export const DENDROBIUM_BOX_PACKING: DendrobiumBoxPackingRow[] = [
+  { size: "S", boxDimensionsCm: "39 × 70 × 43", traysPerBox: "5" },
+  { size: "M", boxDimensionsCm: "39 × 70 × 43", traysPerBox: "5" },
+  { size: "L", boxDimensionsCm: "39 × 70 × 43", traysPerBox: "5" },
+  { size: "LL", boxDimensionsCm: "37 × 80 × 42", traysPerBox: "5" },
+];
+
+/**
+ * Confirmed Mokara box packing remarks (shared across the category).
+ * Used by every Mokara cut variety — do not duplicate per SKU.
+ * Dimensions are centimetres; side order (L/W/H) is not labeled — unknown.
+ */
+export type BoxDimensionRemark = {
+  label: string;
+  detail: string;
+};
+
+export const MOKARA_BOX_DIMENSION_REMARKS: BoxDimensionRemark[] = [
+  { label: "Sizes M & L", detail: "39 × 70 × 43 cm · 5 trays per box" },
+  { label: "Size LL", detail: "37 × 80 × 42 cm · 5 trays per box" },
+];
 
 export type OrchidProduct = {
   /**
@@ -168,6 +297,17 @@ export type BouquetTrayRow = {
   l: string | null;
   ll: string | null;
 };
+
+/** Stem-size columns for bouquet packing / inquiry (shared order). */
+export const BOUQUET_SIZE_COLUMNS = [
+  { id: "SS", key: "ss", label: "SS" },
+  { id: "S", key: "s", label: "S" },
+  { id: "M", key: "m", label: "M" },
+  { id: "L", key: "l", label: "L" },
+  { id: "LL", key: "ll", label: "LL" },
+] as const;
+
+export type BouquetSizeColumnKey = (typeof BOUQUET_SIZE_COLUMNS)[number]["key"];
 
 export const PRODUCT_FORMATS: { id: ProductFormat; label: string }[] = [
   { id: "cut", label: "Fresh Cut Orchids" },
@@ -897,7 +1037,7 @@ export const orchids: OrchidProduct[] = [
       { code: "MBQ5", ss: null, s: null, m: "18", l: "16", ll: "14" },
       { code: "MBQ7", ss: null, s: null, m: "12", l: "11", ll: "10" },
     ],
-    // Inquiry option-picker not wired yet — detail page keeps Inquire CTA
+    order: { unit: "bouquets" },
   },
   {
     number: "03",
@@ -918,7 +1058,7 @@ export const orchids: OrchidProduct[] = [
     family: "dendrobium",
     color: "Purple",
     description: "Individual purple orchid for garnish",
-    order: { unit: "blooms" },
+    order: LOOSE_BLOOM_ORDER,
   },
   {
     number: "04",
@@ -939,7 +1079,7 @@ export const orchids: OrchidProduct[] = [
     family: "dendrobium",
     color: "White",
     description: "Individual white orchids for garnish",
-    order: { unit: "blooms" },
+    order: LOOSE_BLOOM_ORDER,
   },
 ];
 
@@ -961,6 +1101,35 @@ export function displayBouquetTrayCount(value: string | null | undefined): strin
 
 export function hasBouquetOptions(product: OrchidProduct): boolean {
   return Boolean(product.bouquetOptions?.length);
+}
+
+export function getBouquetTrayRow(
+  product: Pick<OrchidProduct, "bouquetTrayCounts">,
+  code: string,
+): BouquetTrayRow | undefined {
+  return product.bouquetTrayCounts?.find((row) => row.code === code);
+}
+
+/** Sizes with real packing counts only — “—” / null columns are not selectable. */
+export function availableBouquetSizes(
+  trayRow: BouquetTrayRow | undefined,
+): { id: string; label: string }[] {
+  if (!trayRow) return [];
+  return BOUQUET_SIZE_COLUMNS.filter((col) => {
+    const value = trayRow[col.key];
+    return value != null && String(value).trim() !== "";
+  }).map((col) => ({ id: col.id, label: col.label }));
+}
+
+/** Confirmed packing cells for mobile blocks (skips unavailable sizes). */
+export function bouquetPackingSizeEntries(
+  trayRow: BouquetTrayRow,
+): { size: string; count: string }[] {
+  return BOUQUET_SIZE_COLUMNS.flatMap((col) => {
+    const value = trayRow[col.key];
+    if (value == null || String(value).trim() === "") return [];
+    return [{ size: col.label, count: String(value).trim() }];
+  });
 }
 
 export function normalizeProductFormat(value: string | null | undefined): ProductFormat {
@@ -1071,6 +1240,12 @@ export function formatNavLabel(format: ProductFormat): string {
 
 export function familyLabel(family: ProductFamily): string {
   return PRODUCT_FAMILIES.find((item) => item.id === family)?.label ?? family;
+}
+
+export function isDendrobiumCutProduct(
+  product: Pick<OrchidProduct, "format" | "family">,
+): boolean {
+  return product.format === "cut" && product.family === "dendrobium";
 }
 
 export function stemsPerTrayRows(

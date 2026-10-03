@@ -78,6 +78,9 @@ function formatItemsForEmail(items: InquiryItem[]): string {
 }
 
 function formatItemSizeLabel(item: InquiryItem): string {
+  if (item.format === "bouquet" && item.sizeLabel) {
+    return `${item.code} · Size ${item.sizeLabel}`;
+  }
   if (item.sizeLabel && item.lengthRange) {
     return `${item.sizeLabel} (${item.lengthRange})`;
   }

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import {
   useEffect,
   useId,
@@ -16,6 +17,11 @@ import {
   productsHref,
   type ProductFormat,
 } from "../data/orchids";
+import {
+  PRODUCT_NAV_MEGA_ITEMS,
+  productNavMegaHref,
+  type ProductNavMegaItem,
+} from "../data/productNavMega";
 
 type ProductsNavMenuProps = {
   className?: string;
@@ -23,6 +29,7 @@ type ProductsNavMenuProps = {
 };
 
 const HOVER_NAV_MQ = "(hover: hover) and (pointer: fine) and (min-width: 761px)";
+const HOVER_CLOSE_DELAY_MS = 140;
 export const CLOSE_MOBILE_NAV_EVENT = "originblooms:close-mobile-nav";
 export const SHOW_SITE_CHROME_EVENT = "originblooms:show-site-chrome";
 
@@ -81,6 +88,17 @@ function useHoverNav() {
   return hoverNav;
 }
 
+function isMegaItemActive(
+  item: ProductNavMegaItem,
+  onProductsPage: boolean,
+  activeFormat: ProductFormat | null,
+  activeFamily: ReturnType<typeof normalizeProductFamily>,
+): boolean {
+  if (!onProductsPage || activeFormat === null) return false;
+  if (item.kind === "format") return activeFormat === item.id;
+  return activeFormat === "cut" && activeFamily === item.id;
+}
+
 export function ProductsNavMenu({
   className,
   "aria-current": ariaCurrent,
@@ -89,14 +107,35 @@ export function ProductsNavMenu({
   const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const menuId = useId();
+  const dropdownMenuId = useId();
+  const megaMenuId = useId();
   const hoverNav = useHoverNav();
+  const hoverCloseTimerRef = useRef<number | null>(null);
 
   const onProductsPage = pathname === "/products";
   const activeFormat: ProductFormat | null = onProductsPage
     ? normalizeProductFormat(searchParams.get("format"))
     : null;
   const activeFamily = normalizeProductFamily(searchParams.get("category"));
+
+  const clearHoverCloseTimer = () => {
+    if (hoverCloseTimerRef.current != null) {
+      window.clearTimeout(hoverCloseTimerRef.current);
+      hoverCloseTimerRef.current = null;
+    }
+  };
+
+  const scheduleHoverClose = () => {
+    clearHoverCloseTimer();
+    hoverCloseTimerRef.current = window.setTimeout(() => {
+      hoverCloseTimerRef.current = null;
+      setOpen(false);
+    }, HOVER_CLOSE_DELAY_MS);
+  };
+
+  useEffect(() => {
+    return () => clearHoverCloseTimer();
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -124,7 +163,6 @@ export function ProductsNavMenu({
   }, [pathname, searchParams]);
 
   const onTriggerClick = (event: ReactMouseEvent<HTMLButtonElement>) => {
-    // Desktop hover nav opens on mouseenter; keep click for touch / coarse pointers.
     if (hoverNav) return;
     event.preventDefault();
     event.stopPropagation();
@@ -132,11 +170,12 @@ export function ProductsNavMenu({
   };
 
   const onRootMouseEnter = () => {
+    clearHoverCloseTimer();
     if (hoverNav) setOpen(true);
   };
 
   const onRootMouseLeave = () => {
-    if (hoverNav) setOpen(false);
+    if (hoverNav) scheduleHoverClose();
   };
 
   const onTriggerFocus = () => {
@@ -154,9 +193,18 @@ export function ProductsNavMenu({
     window.dispatchEvent(new Event(CLOSE_MOBILE_NAV_EVENT));
   };
 
+  const navClassName = [
+    "products-nav",
+    open ? "is-open" : "",
+    hoverNav ? "products-nav--desktop-mega" : "",
+    className ?? "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <div
-      className={`products-nav${open ? " is-open" : ""}${className ? ` ${className}` : ""}`}
+      className={navClassName}
       ref={rootRef}
       onMouseEnter={onRootMouseEnter}
       onMouseLeave={onRootMouseLeave}
@@ -166,7 +214,7 @@ export function ProductsNavMenu({
         type="button"
         className="products-nav-trigger"
         aria-expanded={open}
-        aria-controls={menuId}
+        aria-controls={hoverNav ? megaMenuId : dropdownMenuId}
         aria-haspopup="menu"
         aria-current={ariaCurrent}
         onClick={onTriggerClick}
@@ -177,9 +225,74 @@ export function ProductsNavMenu({
           ▾
         </span>
       </button>
+
+      {hoverNav ? (
+        <div
+          className="products-nav-mega"
+          id={megaMenuId}
+          role="menu"
+          aria-label="Product categories"
+          hidden={!open}
+          onMouseEnter={clearHoverCloseTimer}
+          onMouseLeave={scheduleHoverClose}
+        >
+          <div className="products-nav-mega-shell section-shell">
+            <div className="products-nav-mega-grid">
+              {PRODUCT_NAV_MEGA_ITEMS.map((item) => {
+                const selected = isMegaItemActive(
+                  item,
+                  onProductsPage,
+                  activeFormat,
+                  activeFamily,
+                );
+                const href = productNavMegaHref(item);
+                return (
+                  <a
+                    key={`${item.kind}-${item.id}`}
+                    role="menuitem"
+                    className={`products-nav-mega-item${selected ? " is-active" : ""}`}
+                    href={href}
+                    aria-current={selected ? "true" : undefined}
+                    onClick={onOptionClick}
+                  >
+                    <span className="products-nav-mega-banner">
+                      {item.imageSrc ? (
+                        item.imageFit === "contain" &&
+                        item.imageWidth &&
+                        item.imageHeight ? (
+                          <Image
+                            src={item.imageSrc}
+                            alt=""
+                            width={item.imageWidth}
+                            height={item.imageHeight}
+                            sizes="(min-width: 1200px) 280px, (min-width: 761px) 22vw, 0px"
+                            className="products-nav-mega-media products-nav-mega-media--contain"
+                          />
+                        ) : (
+                          <Image
+                            src={item.imageSrc}
+                            alt=""
+                            fill
+                            sizes="(min-width: 1200px) 280px, (min-width: 761px) 22vw, 0px"
+                            className="products-nav-mega-media"
+                          />
+                        )
+                      ) : (
+                        <span className="products-nav-mega-media-placeholder" aria-hidden="true" />
+                      )}
+                    </span>
+                    <span className="products-nav-mega-label">{item.label}</span>
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div
         className="products-nav-dropdown"
-        id={menuId}
+        id={dropdownMenuId}
         role="menu"
         aria-label="Product formats"
         hidden={!open}
