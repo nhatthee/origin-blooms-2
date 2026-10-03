@@ -1,7 +1,9 @@
 /**
  * Suspense fallback for ProductCatalog — keeps page height so the footer
  * cannot jump up while searchParams resolve on category soft-navigation.
- * Hero frame uses the same 4/1 aspect-ratio CSS as the live catalog.
+ * Hero frame uses the same aspect-ratio CSS as the live catalog
+ * (4/1 desktop, 5/2 mobile ≤760px). No category image — avoids flash of
+ * the wrong category while navigating.
  */
 export function ProductsCatalogFallback() {
   return (

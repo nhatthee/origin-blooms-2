@@ -102,22 +102,21 @@ export const PRODUCT_NAV_MEGA_ITEMS: ProductNavMegaItem[] = [
     id: "dyed",
     label: "Dyed Orchids",
     overlayTitle: PRODUCT_CATEGORY_OVERLAY_TITLES.dyed,
-    // Real folder is dyed-orchid (not dye-orchid from brief).
-    imageSrc: "/images/products/dyed-orchid/dyed-orchid-mega-menu.png",
+    imageSrc: "/images/products/dyed-orchids/dyed-orchid-mega-menu.png",
   },
   {
     kind: "format",
     id: "bouquet",
     label: "Bouquets",
     overlayTitle: PRODUCT_CATEGORY_OVERLAY_TITLES.bouquet,
-    imageSrc: "/images/products/bouquet/bouquet-1.png",
+    imageSrc: "/images/products/bouquet/bouquet-mega-menu.png",
   },
   {
     kind: "format",
     id: "loose",
     label: "Loose Blooms",
     overlayTitle: PRODUCT_CATEGORY_OVERLAY_TITLES.loose,
-    imageSrc: "/images/products/loose-bloom-sonia.png",
+    imageSrc: "/images/products/loose-blooms/loose-blooms-mega-menu.png",
   },
 ];
 
@@ -126,6 +125,24 @@ export function productNavMegaHref(item: ProductNavMegaItem): string {
     return productsHref(item.id);
   }
   return productsHref("cut", item.id);
+}
+
+/** Resolve the mega-menu tile for the active products catalog category. */
+export function productNavMegaItemForCatalog(
+  format: ProductFormat,
+  family: ProductFamily,
+): ProductNavMegaItem | undefined {
+  if (format === "bouquet" || format === "loose") {
+    return PRODUCT_NAV_MEGA_ITEMS.find(
+      (item) => item.kind === "format" && item.id === format,
+    );
+  }
+  if (format === "cut") {
+    return PRODUCT_NAV_MEGA_ITEMS.find(
+      (item) => item.kind === "cut-family" && item.id === family,
+    );
+  }
+  return undefined;
 }
 
 export function productNavMegaMissingImages(): string[] {

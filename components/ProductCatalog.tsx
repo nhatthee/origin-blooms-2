@@ -18,6 +18,8 @@ import {
 import {
   productCategoryOverlayTitle,
   productCategoryOverlayTone,
+  productNavMegaItemForCatalog,
+  type ProductCategoryOverlayId,
 } from "../data/productNavMega";
 import { useLocationSearch } from "./useLocationSearch";
 
@@ -105,71 +107,108 @@ function ProductCatalogView({
 
   const emptyCategory = categoryProducts.length === 0;
   const emptyResults = !emptyCategory && visible.length === 0;
-  const categoryHeroByFamily = {
+  const desktopHeroByFamily = {
     dendrobium: {
       src: "/images/products/dendrobium/dendrobium-hero.png",
       alt: "Dendrobium orchids",
       width: 1983,
       height: 793,
-      title: productCategoryOverlayTitle("dendrobium"),
-      tone: productCategoryOverlayTone("dendrobium"),
     },
     "mokara-aranda": {
       src: "/images/products/mokara/mokara-hero.png",
       alt: "Mokara orchids",
       width: 1983,
       height: 793,
-      title: productCategoryOverlayTitle("mokara-aranda"),
-      tone: productCategoryOverlayTone("mokara-aranda"),
     },
     vanda: {
       src: "/images/products/vanda/vanda-hero.png",
       alt: "Vanda orchids",
       width: 1983,
       height: 793,
-      title: productCategoryOverlayTitle("vanda"),
-      tone: productCategoryOverlayTone("vanda"),
     },
     oncidium: {
       src: "/images/products/oncidium/oncidium-hero.png",
       alt: "Oncidium orchids",
       width: 1983,
       height: 793,
-      title: productCategoryOverlayTitle("oncidium"),
-      tone: productCategoryOverlayTone("oncidium"),
     },
     dyed: {
-      src: "/images/products/dyed-orchid/dyed-orchid-hero.png",
+      src: "/images/products/dyed-orchids/dyed-orchid-hero.png",
       alt: "Dyed Orchids",
       width: 1983,
       height: 793,
-      title: productCategoryOverlayTitle("dyed"),
-      tone: productCategoryOverlayTone("dyed"),
     },
   } as const;
-  const categoryHero =
-    format === "cut" ? (categoryHeroByFamily[family] ?? null) : null;
+  const desktopHeroByFormat = {
+    bouquet: {
+      src: "/images/products/bouquet/bouquet-hero.png",
+      alt: "Orchid Bouquets",
+      width: 1983,
+      height: 793,
+    },
+    loose: {
+      src: "/images/products/loose-blooms/loose-blooms-hero.png",
+      alt: "Loose Blooms",
+      width: 1983,
+      height: 793,
+    },
+  } as const;
+  const megaItem = productNavMegaItemForCatalog(format, family);
+  const overlayId = (megaItem?.id ?? null) as ProductCategoryOverlayId | null;
+  const desktopHero =
+    format === "cut"
+      ? (desktopHeroByFamily[family] ?? null)
+      : format === "bouquet" || format === "loose"
+        ? desktopHeroByFormat[format]
+        : null;
+  const mobileHeroSrc = megaItem?.imageSrc ?? null;
+  const heroTitle = overlayId
+    ? productCategoryOverlayTitle(overlayId)
+    : null;
+  const heroTone = overlayId ? productCategoryOverlayTone(overlayId) : null;
+  const heroAlt =
+    desktopHero?.alt ??
+    (megaItem ? `${megaItem.label} orchids` : "Product category");
+  const showHero = Boolean(desktopHero || mobileHeroSrc);
+  const mobileOnlyHero = Boolean(mobileHeroSrc && !desktopHero);
 
   return (
     <div className="products-page">
-      {categoryHero ? (
-        <div className="products-category-hero">
+      {showHero ? (
+        <div
+          className={`products-category-hero${mobileOnlyHero ? " products-category-hero--mobile-only" : ""}`}
+        >
           <div className="products-category-hero-frame">
-            <Image
-              key={categoryHero.src}
-              src={categoryHero.src}
-              alt={categoryHero.alt}
-              width={categoryHero.width}
-              height={categoryHero.height}
-              className="products-category-hero-media"
-              sizes="(max-width: 760px) calc(100vw - clamp(32px, 10.8vw, 200px)), calc(100vw - clamp(44px, 10vw, 200px))"
-              priority
-            />
-            <p
-              className={`products-banner-title products-banner-title--hero products-banner-title--${categoryHero.tone}`}
-            >
-              {categoryHero.title}
-            </p>
+            {desktopHero ? (
+              <Image
+                key={`desktop-${desktopHero.src}`}
+                src={desktopHero.src}
+                alt={heroAlt}
+                width={desktopHero.width}
+                height={desktopHero.height}
+                className="products-category-hero-media products-category-hero-media--desktop"
+                sizes="(max-width: 760px) 0px, calc(100vw - clamp(44px, 10vw, 200px))"
+                priority
+              />
+            ) : null}
+            {mobileHeroSrc ? (
+              <Image
+                key={`mobile-${mobileHeroSrc}`}
+                src={mobileHeroSrc}
+                alt={heroAlt}
+                fill
+                className="products-category-hero-media products-category-hero-media--mobile"
+                sizes="(max-width: 760px) calc(100vw - clamp(32px, 10.8vw, 200px)), 0px"
+                priority
+              />
+            ) : null}
+            {heroTitle && heroTone ? (
+              <p
+                className={`products-banner-title products-banner-title--hero products-banner-title--${heroTone}`}
+              >
+                {heroTitle}
+              </p>
+            ) : null}
           </div>
         </div>
       ) : null}

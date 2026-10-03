@@ -390,6 +390,18 @@ function dendrobiumGalleryExtra(
   };
 }
 
+function dyedGalleryExtra(
+  file: string,
+  name: string,
+  label = "additional photo",
+): ProductImage {
+  return {
+    src: `/images/products/dyed-orchids/${file}`,
+    alt: `${name} — ${label}`,
+    kind: "product",
+  };
+}
+
 function uniqueProductImages(images: ProductImage[]): ProductImage[] {
   const seen = new Set<string>();
   const out: ProductImage[] = [];
@@ -414,7 +426,10 @@ function dendrobiumCut(opts: {
   category?: string;
   tagline?: string;
 }): OrchidProduct {
-  const primary = `/images/products/dendrobium/${opts.imageFile}`;
+  const isDyed = Boolean(opts.isDyed);
+  const primary = isDyed
+    ? `/images/products/dyed-orchids/${opts.imageFile}`
+    : `/images/products/dendrobium/${opts.imageFile}`;
   const images = uniqueProductImages([
     {
       src: primary,
@@ -424,7 +439,6 @@ function dendrobiumCut(opts: {
     ...(opts.extraImages ?? []),
   ]);
 
-  const isDyed = Boolean(opts.isDyed);
   return {
     number: opts.number ?? null,
     slug: opts.slug,
@@ -942,6 +956,7 @@ export const orchids: OrchidProduct[] = [
     imageFile: "dyed-blue-sonia.png",
     color: "Blue — Dyed",
     isDyed: true,
+    extraImages: [dyedGalleryExtra("dyed-blue-sonia-1.png", "Dyed Blue Sonia")],
   }),
   // 39
   dendrobiumCut({
@@ -960,6 +975,7 @@ export const orchids: OrchidProduct[] = [
     imageFile: "dyed-red-sonia.png",
     color: "Red — Dyed",
     isDyed: true,
+    extraImages: [dyedGalleryExtra("dyed-red-sonia-1.png", "Dyed Red Sonia")],
   }),
   // 41
   dendrobiumCut({
@@ -969,24 +985,34 @@ export const orchids: OrchidProduct[] = [
     imageFile: "dyed-yellow-sonia.png",
     color: "Yellow — Dyed",
     isDyed: true,
+    extraImages: [dyedGalleryExtra("dyed-yellow-sonia-1.png", "Dyed Yellow Sonia")],
   }),
   // 42 — code pending (possible BWF (B), unconfirmed)
   dendrobiumCut({
     number: null,
     slug: "dyed-blue-white-orchid",
-    name: "Dyed Blue White Orchid",
+    name: "Dyed Blue Big White Form",
     imageFile: "dyed-blue-white-orchid.png",
     color: "Blue — Dyed",
     isDyed: true,
+    extraImages: [
+      dyedGalleryExtra("dyed-blue-big-white-form-1.png", "Dyed Blue Big White Form"),
+    ],
   }),
   // 43 — code pending (possible BWF (Y), unconfirmed)
   dendrobiumCut({
     number: null,
     slug: "dyed-yellow-white-orchid",
-    name: "Dyed Yellow White Orchid",
+    name: "Dyed Yellow Big White Form",
     imageFile: "dyed-yellow-white-orchid.png",
     color: "Yellow — Dyed",
     isDyed: true,
+    extraImages: [
+      dyedGalleryExtra(
+        "dyed-yellow-big-white-form-1.png",
+        "Dyed Yellow Big White Form",
+      ),
+    ],
   }),
   // Mokara (Orchids → Mokara) — order matches source files 01–19; skip if re-run would duplicate slugs
   mokaraCut({

@@ -9,6 +9,7 @@ import {
   useState,
   type TransitionEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { useInquiry } from "./InquiryProvider";
 import { CLOSE_MOBILE_NAV_EVENT, ProductsNavMenu } from "./ProductsNavLink";
@@ -19,7 +20,7 @@ type SiteHeaderProps = {
 };
 
 const MOBILE_NAV_MQ = "(max-width: 760px)";
-const MENU_MOTION_MS = 700;
+const MENU_MOTION_MS = 360;
 
 function isCurrentPath(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -48,7 +49,7 @@ function ProductsNavFallback({ ariaCurrent }: { ariaCurrent?: "page" }) {
         aria-haspopup="menu"
         aria-current={ariaCurrent}
       >
-        Products
+        <span className="products-nav-trigger-label">Products</span>
         <span className="products-nav-caret" aria-hidden="true">
           ▾
         </span>
@@ -186,6 +187,7 @@ export function SiteHeader({ homePage = false }: SiteHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [panelMounted, setPanelMounted] = useState(false);
   const [panelRevealed, setPanelRevealed] = useState(false);
+  const [portalReady, setPortalReady] = useState(false);
   const scrollYRef = useRef(0);
   const closeTimerRef = useRef<number | null>(null);
   const lockedRef = useRef(false);
@@ -207,6 +209,10 @@ export function SiteHeader({ homePage = false }: SiteHeaderProps) {
     lockedRef.current = false;
     unlockBodyScroll(scrollYRef.current);
   };
+
+  useEffect(() => {
+    setPortalReady(true);
+  }, []);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -295,96 +301,31 @@ export function SiteHeader({ homePage = false }: SiteHeaderProps) {
 
   const onPanelTransitionEnd = (event: TransitionEvent<HTMLElement>) => {
     if (event.target !== event.currentTarget) return;
-    if (event.propertyName !== "clip-path") return;
+    if (event.propertyName !== "transform") return;
     if (menuOpenRef.current || panelRevealedRef.current) return;
     clearCloseTimer();
     setPanelMounted(false);
     releaseScrollLock();
   };
 
+  const closeMenu = () => setMenuOpen(false);
+
   return (
     <header className="site-header" id={homePage ? "top" : undefined}>
-      <a className="logo" href="/" aria-label="Origin Blooms home">
-        <Image
-          className="logo-image"
-          src="/images/logo/origin-blooms-purple.svg"
-          alt="Origin Blooms"
-          width={480}
-          height={200}
-          priority
-          unoptimized
-        />
-      </a>
-      <div className="desktop-header-actions">
-        <nav className="desktop-nav" aria-label="Main navigation">
-          <a href="/" aria-current={pageCurrent(pathname, "/")}>
-            Home
-          </a>
-          <Suspense fallback={<ProductsNavFallback ariaCurrent={productsCurrent} />}>
-            <ProductsNavMenu aria-current={productsCurrent} />
-          </Suspense>
-          <a href="/about-us" aria-current={pageCurrent(pathname, "/about-us")}>
-            About Us
-          </a>
-          <a href="/contact" aria-current={pageCurrent(pathname, "/contact")}>
-            Contact
-          </a>
-          <a href="/resources" aria-current={pageCurrent(pathname, "/resources")}>
-            Resources
-          </a>
-        </nav>
-        <div className="header-icon-actions" aria-label="Account and inquiry">
-          <a
-            className="header-icon-link"
-            href="/login"
-            aria-label="Login"
-            aria-current={pageCurrent(pathname, "/login")}
-          >
-            <LoginPersonIcon />
-          </a>
-          <a
-            className="header-icon-link header-icon-link--bag"
-            href="/inquiry"
-            aria-label="View inquiry list"
-            aria-current={inquiryCurrent}
-          >
-            <InquiryBagIcon />
-            {showInquiryBadge ? (
-              <span className="header-inquiry-badge" aria-hidden="true">
-                {inquiryCount > 99 ? "99+" : inquiryCount}
-              </span>
-            ) : null}
-          </a>
-        </div>
-      </div>
-      <div className="mobile-header-actions">
-        <a
-          className="mobile-join"
-          href="/login"
-          aria-current={pageCurrent(pathname, "/login")}
-        >
-          Join
+      <div className="site-header-top">
+        <a className="logo" href="/" aria-label="Origin Blooms home">
+          <Image
+            className="logo-image"
+            src="/images/logo/origin-blooms-purple.svg"
+            alt="Origin Blooms"
+            width={480}
+            height={200}
+            priority
+            unoptimized
+          />
         </a>
-        <button
-          type="button"
-          className="mobile-menu-toggle"
-          aria-expanded={menuOpen}
-          aria-controls={navId}
-          aria-label={menuOpen ? "Close navigation" : "Open navigation"}
-          onClick={() => setMenuOpen((current) => !current)}
-        >
-          {menuOpen ? <CloseIcon /> : <HamburgerIcon />}
-        </button>
-      </div>
-      {panelMounted ? (
-        <nav
-          id={navId}
-          className={`mobile-menu-panel${panelRevealed ? " is-open" : ""}`}
-          aria-label="Mobile navigation"
-          aria-hidden={!panelRevealed}
-          onTransitionEnd={onPanelTransitionEnd}
-        >
-          <div className="mobile-menu-panel-inner">
+        <div className="desktop-header-actions">
+          <nav className="desktop-nav" aria-label="Main navigation">
             <a href="/" aria-current={pageCurrent(pathname, "/")}>
               Home
             </a>
@@ -397,22 +338,120 @@ export function SiteHeader({ homePage = false }: SiteHeaderProps) {
             <a href="/contact" aria-current={pageCurrent(pathname, "/contact")}>
               Contact
             </a>
-            <a
-              href="/inquiry"
-              className="inquiry-nav-link"
-              aria-current={inquiryCurrent}
-            >
-              {inquiryLabel}
-            </a>
             <a href="/resources" aria-current={pageCurrent(pathname, "/resources")}>
               Resources
             </a>
-            <a href="/login" aria-current={pageCurrent(pathname, "/login")}>
-              Login
+          </nav>
+          <div className="header-icon-actions" aria-label="Account and inquiry">
+            <a
+              className="header-icon-link"
+              href="/login"
+              aria-label="Login"
+              aria-current={pageCurrent(pathname, "/login")}
+            >
+              <LoginPersonIcon />
+            </a>
+            <a
+              className="header-icon-link header-icon-link--bag"
+              href="/inquiry"
+              aria-label="View inquiry list"
+              aria-current={inquiryCurrent}
+            >
+              <InquiryBagIcon />
+              {showInquiryBadge ? (
+                <span className="header-inquiry-badge" aria-hidden="true">
+                  {inquiryCount > 99 ? "99+" : inquiryCount}
+                </span>
+              ) : null}
             </a>
           </div>
-        </nav>
-      ) : null}
+        </div>
+        <div className="mobile-header-actions">
+          <a
+            className="mobile-join"
+            href="/login"
+            aria-current={pageCurrent(pathname, "/login")}
+          >
+            Join
+          </a>
+          <button
+            type="button"
+            className="mobile-menu-toggle"
+            aria-expanded={menuOpen}
+            aria-controls={navId}
+            aria-label={menuOpen ? "Close navigation" : "Open navigation"}
+            onClick={() => setMenuOpen((current) => !current)}
+          >
+            <HamburgerIcon />
+          </button>
+        </div>
+      </div>
+      <nav className="mobile-primary-nav" aria-label="Primary">
+        <a href="/" aria-current={pageCurrent(pathname, "/")}>
+          Home
+        </a>
+        <Suspense fallback={<ProductsNavFallback ariaCurrent={productsCurrent} />}>
+          <ProductsNavMenu aria-current={productsCurrent} />
+        </Suspense>
+        <a href="/about-us" aria-current={pageCurrent(pathname, "/about-us")}>
+          About Us
+        </a>
+        <a href="/contact" aria-current={pageCurrent(pathname, "/contact")}>
+          Contact
+        </a>
+      </nav>
+      {portalReady && panelMounted
+        ? createPortal(
+            <>
+              <div
+                className={`mobile-menu-backdrop${panelRevealed ? " is-open" : ""}`}
+                aria-hidden="true"
+                onClick={closeMenu}
+              />
+              <nav
+                id={navId}
+                className={`mobile-menu-panel${panelRevealed ? " is-open" : ""}`}
+                aria-label="Mobile navigation"
+                aria-hidden={!panelRevealed}
+                onTransitionEnd={onPanelTransitionEnd}
+              >
+                <div className="mobile-menu-panel-inner">
+                  <button
+                    type="button"
+                    className="mobile-menu-close"
+                    aria-label="Close navigation"
+                    onClick={closeMenu}
+                  >
+                    <CloseIcon />
+                  </button>
+                  <a href="/" aria-current={pageCurrent(pathname, "/")}>
+                    Home
+                  </a>
+                  <Suspense fallback={<ProductsNavFallback ariaCurrent={productsCurrent} />}>
+                    <ProductsNavMenu aria-current={productsCurrent} />
+                  </Suspense>
+                  <a href="/about-us" aria-current={pageCurrent(pathname, "/about-us")}>
+                    About Us
+                  </a>
+                  <a href="/contact" aria-current={pageCurrent(pathname, "/contact")}>
+                    Contact
+                  </a>
+                  <a
+                    href="/inquiry"
+                    className="inquiry-nav-link"
+                    aria-current={inquiryCurrent}
+                  >
+                    {inquiryLabel}
+                  </a>
+                  <a href="/login" aria-current={pageCurrent(pathname, "/login")}>
+                    Login
+                  </a>
+                </div>
+              </nav>
+            </>,
+            document.body,
+          )
+        : null}
     </header>
   );
 }

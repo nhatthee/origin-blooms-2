@@ -12,10 +12,8 @@ import {
 } from "react";
 import { usePathname } from "next/navigation";
 import {
-  PRODUCT_FORMATS,
   normalizeProductFamily,
   normalizeProductFormat,
-  productsHref,
   type ProductFormat,
 } from "../data/orchids";
 import {
@@ -243,9 +241,9 @@ export function ProductsNavMenu({
         aria-haspopup="menu"
         aria-current={ariaCurrent}
         onClick={onTriggerClick}
-        onFocus={onTriggerFocus}
+        onFocus={hoverNav ? onTriggerFocus : undefined}
       >
-        Products
+        <span className="products-nav-trigger-label">Products</span>
         <span className="products-nav-caret" aria-hidden="true">
           ▾
         </span>
@@ -323,34 +321,63 @@ export function ProductsNavMenu({
             </div>
           </div>
         </div>
-      ) : null}
-
-      <div
-        className="products-nav-dropdown"
-        id={dropdownMenuId}
-        role="menu"
-        aria-label="Product formats"
-        hidden={!open}
-      >
-        {PRODUCT_FORMATS.map((item) => {
-          const selected = activeFormat === item.id;
-          const navLabel =
-            item.id === "cut" ? "Orchids" : item.id === "bouquet" ? "Bouquets" : "Loose Blooms";
-          return (
-            <Link
-              key={item.id}
-              role="menuitem"
-              className={`products-nav-option${selected ? " is-selected" : ""}`}
-              href={productsHref(item.id, onProductsPage ? activeFamily : "dendrobium")}
-              scroll={false}
-              aria-current={selected ? "true" : undefined}
-              onClick={onOptionClick}
-            >
-              {navLabel}
-            </Link>
-          );
-        })}
-      </div>
+      ) : (
+        <div
+          className="mobile-products-accordion"
+          id={dropdownMenuId}
+          role="region"
+          aria-label="Product categories"
+          hidden={!open}
+        >
+          <ul className="mobile-products-list">
+            {PRODUCT_NAV_MEGA_ITEMS.map((item) => {
+              const selected = isMegaItemActive(
+                item,
+                onProductsPage,
+                activeFormat,
+                activeFamily,
+              );
+              const href = productNavMegaHref(item);
+              const tone = productCategoryOverlayTone(
+                item.id as ProductCategoryOverlayId,
+              );
+              return (
+                <li key={`${item.kind}-${item.id}`} className="mobile-products-item">
+                  <Link
+                    className={`mobile-products-card${selected ? " is-active" : ""}`}
+                    href={href}
+                    scroll={false}
+                    aria-label={item.label}
+                    aria-current={selected ? "true" : undefined}
+                    onClick={onOptionClick}
+                  >
+                    <span className="products-nav-mega-banner mobile-products-banner">
+                      {item.imageSrc ? (
+                        <Image
+                          src={item.imageSrc}
+                          alt=""
+                          fill
+                          sizes="95vw"
+                          className="products-nav-mega-media"
+                        />
+                      ) : (
+                        <span className="products-nav-mega-media-placeholder" aria-hidden="true" />
+                      )}
+                      <span
+                        className={`products-banner-title products-banner-title--mega products-banner-title--${tone}`}
+                        aria-hidden="true"
+                      >
+                        {item.overlayTitle}
+                      </span>
+                    </span>
+                    <span className="mobile-products-label">{item.label}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
