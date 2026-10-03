@@ -4,11 +4,51 @@ import {
   type ProductFormat,
 } from "./orchids";
 
+/** Uppercase category titles for Hero / Mega banner HTML overlays. */
+export const PRODUCT_CATEGORY_OVERLAY_TITLES = {
+  dendrobium: "DENDROBIUM",
+  "mokara-aranda": "MOKARA",
+  vanda: "VANDA",
+  oncidium: "ONCIDIUM",
+  dyed: "DYED ORCHIDS",
+  bouquet: "BOUQUETS",
+  loose: "LOOSE BLOOMS",
+} as const;
+
+export type ProductCategoryOverlayId = keyof typeof PRODUCT_CATEGORY_OVERLAY_TITLES;
+
+/** CSS modifier keys for per-category overlay colors (stable; not URL/slug). */
+export const PRODUCT_CATEGORY_OVERLAY_TONE: Record<
+  ProductCategoryOverlayId,
+  string
+> = {
+  dendrobium: "dendrobium",
+  "mokara-aranda": "mokara",
+  vanda: "vanda",
+  oncidium: "oncidium",
+  dyed: "dyed",
+  bouquet: "bouquet",
+  loose: "loose",
+};
+
+export function productCategoryOverlayTitle(
+  id: ProductCategoryOverlayId,
+): string {
+  return PRODUCT_CATEGORY_OVERLAY_TITLES[id];
+}
+
+export function productCategoryOverlayTone(
+  id: ProductCategoryOverlayId,
+): string {
+  return PRODUCT_CATEGORY_OVERLAY_TONE[id];
+}
+
 export type ProductNavMegaItem =
   | {
       kind: "cut-family";
       id: ProductFamily;
       label: string;
+      overlayTitle: string;
       /** Category banner in public/; null when no matching asset exists. */
       imageSrc: string | null;
       /** Intrinsic Next.js Image size when not using fill defaults. */
@@ -20,6 +60,7 @@ export type ProductNavMegaItem =
       kind: "format";
       id: ProductFormat;
       label: string;
+      overlayTitle: string;
       imageSrc: string | null;
       imageWidth?: number;
       imageHeight?: number;
@@ -32,30 +73,35 @@ export const PRODUCT_NAV_MEGA_ITEMS: ProductNavMegaItem[] = [
     kind: "cut-family",
     id: "dendrobium",
     label: "Dendrobium",
+    overlayTitle: PRODUCT_CATEGORY_OVERLAY_TITLES.dendrobium,
     imageSrc: "/images/products/dendrobium/dendrobium-mega-menu.png",
   },
   {
     kind: "cut-family",
     id: "mokara-aranda",
     label: "Mokara",
+    overlayTitle: PRODUCT_CATEGORY_OVERLAY_TITLES["mokara-aranda"],
     imageSrc: "/images/products/mokara/mokara-mega-menu.png",
   },
   {
     kind: "cut-family",
     id: "vanda",
     label: "Vanda",
+    overlayTitle: PRODUCT_CATEGORY_OVERLAY_TITLES.vanda,
     imageSrc: "/images/products/vanda/vanda-mega-menu.png",
   },
   {
     kind: "cut-family",
     id: "oncidium",
     label: "Oncidium",
+    overlayTitle: PRODUCT_CATEGORY_OVERLAY_TITLES.oncidium,
     imageSrc: "/images/products/oncidium/oncidium-mega-menu.png",
   },
   {
     kind: "cut-family",
     id: "dyed",
     label: "Dyed Orchids",
+    overlayTitle: PRODUCT_CATEGORY_OVERLAY_TITLES.dyed,
     // Real folder is dyed-orchid (not dye-orchid from brief).
     imageSrc: "/images/products/dyed-orchid/dyed-orchid-mega-menu.png",
   },
@@ -63,12 +109,14 @@ export const PRODUCT_NAV_MEGA_ITEMS: ProductNavMegaItem[] = [
     kind: "format",
     id: "bouquet",
     label: "Bouquets",
+    overlayTitle: PRODUCT_CATEGORY_OVERLAY_TITLES.bouquet,
     imageSrc: "/images/products/bouquet/bouquet-1.png",
   },
   {
     kind: "format",
     id: "loose",
     label: "Loose Blooms",
+    overlayTitle: PRODUCT_CATEGORY_OVERLAY_TITLES.loose,
     imageSrc: "/images/products/loose-bloom-sonia.png",
   },
 ];

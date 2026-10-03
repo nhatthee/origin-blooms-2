@@ -86,6 +86,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
   const bouquetTrayCounts = product.bouquetTrayCounts ?? [];
   const showBouquetDetails = hasBouquetOptions(product);
   const trayRows = stemsPerTrayRows(product);
+  const showTrayLengthColumn = trayRows.some((row) => Boolean(row.stemLength.trim()));
   const showMokaraPendingPacking =
     product.family === "mokara-aranda" && trayRows.length === 0 && !showBouquetDetails;
   const showMokaraBoxDimensions =
@@ -346,11 +347,15 @@ export function ProductDetail({ product }: ProductDetailProps) {
             ) : trayRows.length > 0 ? (
               <>
                 <div className="product-detail-table-scroll">
-                  <table className="product-detail-info-table product-detail-info-table--numeric">
+                  <table
+                    className={`product-detail-info-table product-detail-info-table--numeric${
+                      showTrayLengthColumn ? "" : " product-detail-info-table--tray-only"
+                    }`}
+                  >
                     <thead>
                       <tr>
                         <th scope="col">Size</th>
-                        <th scope="col">Stem length</th>
+                        {showTrayLengthColumn ? <th scope="col">Stem length</th> : null}
                         <th scope="col">Stems per tray</th>
                       </tr>
                     </thead>
@@ -358,7 +363,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
                       {trayRows.map((row) => (
                         <tr key={row.size}>
                           <th scope="row">{row.size}</th>
-                          <td>{row.stemLength}</td>
+                          {showTrayLengthColumn ? <td>{row.stemLength}</td> : null}
                           <td>{row.stemsPerTray}</td>
                         </tr>
                       ))}

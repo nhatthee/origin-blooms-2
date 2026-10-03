@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import {
   useEffect,
   useId,
@@ -9,7 +10,7 @@ import {
   type FocusEvent as ReactFocusEvent,
   type MouseEvent as ReactMouseEvent,
 } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   PRODUCT_FORMATS,
   normalizeProductFamily,
@@ -19,9 +20,12 @@ import {
 } from "../data/orchids";
 import {
   PRODUCT_NAV_MEGA_ITEMS,
+  productCategoryOverlayTone,
   productNavMegaHref,
+  type ProductCategoryOverlayId,
   type ProductNavMegaItem,
 } from "../data/productNavMega";
+import { useLocationSearch } from "./useLocationSearch";
 
 type ProductsNavMenuProps = {
   className?: string;
@@ -104,13 +108,16 @@ export function ProductsNavMenu({
   "aria-current": ariaCurrent,
 }: ProductsNavMenuProps) {
   const pathname = usePathname() || "/";
-  const searchParams = useSearchParams();
+  const searchParams = useLocationSearch();
+  const queryKey = searchParams.toString();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const dropdownMenuId = useId();
   const megaMenuId = useId();
   const hoverNav = useHoverNav();
   const hoverCloseTimerRef = useRef<number | null>(null);
+  /** After a mega/dropdown choice, ignore hover-open until the pointer leaves the nav. */
+  const suppressHoverOpenRef = useRef(false);
 
   const onProductsPage = pathname === "/products";
   const activeFormat: ProductFormat | null = onProductsPage
@@ -160,7 +167,7 @@ export function ProductsNavMenu({
 
   useEffect(() => {
     setOpen(false);
-  }, [pathname, searchParams]);
+  }, [pathname, queryKey]);
 
   const onTriggerClick = (event: ReactMouseEvent<HTMLButtonElement>) => {
     if (hoverNav) return;
@@ -171,14 +178,17 @@ export function ProductsNavMenu({
 
   const onRootMouseEnter = () => {
     clearHoverCloseTimer();
+    if (suppressHoverOpenRef.current) return;
     if (hoverNav) setOpen(true);
   };
 
   const onRootMouseLeave = () => {
+    suppressHoverOpenRef.current = false;
     if (hoverNav) scheduleHoverClose();
   };
 
   const onTriggerFocus = () => {
+    if (suppressHoverOpenRef.current) return;
     setOpen(true);
   };
 
@@ -188,9 +198,24 @@ export function ProductsNavMenu({
     setOpen(false);
   };
 
-  const onOptionClick = () => {
-    setOpen(false);
+  /**
+   * Keep the mega/dropdown open until the destination query lands so the panel
+   * covers the outgoing category hero. Closing happens via the queryKey effect.
+   */
+  const onOptionClick = (event: ReactMouseEvent<HTMLAnchorElement>) => {
+    suppressHoverOpenRef.current = true;
     window.dispatchEvent(new Event(CLOSE_MOBILE_NAV_EVENT));
+
+    const href = event.currentTarget.getAttribute("href");
+    if (!href) {
+      setOpen(false);
+      return;
+    }
+    const next = new URL(href, window.location.origin);
+    const sameDestination =
+      next.pathname === window.location.pathname &&
+      next.search === window.location.search;
+    if (sameDestination) setOpen(false);
   };
 
   const navClassName = [
@@ -246,12 +271,17 @@ export function ProductsNavMenu({
                   activeFamily,
                 );
                 const href = productNavMegaHref(item);
+                const tone = productCategoryOverlayTone(
+                  item.id as ProductCategoryOverlayId,
+                );
                 return (
-                  <a
+                  <Link
                     key={`${item.kind}-${item.id}`}
                     role="menuitem"
                     className={`products-nav-mega-item${selected ? " is-active" : ""}`}
                     href={href}
+                    scroll={false}
+                    aria-label={item.label}
                     aria-current={selected ? "true" : undefined}
                     onClick={onOptionClick}
                   >
@@ -280,9 +310,14 @@ export function ProductsNavMenu({
                       ) : (
                         <span className="products-nav-mega-media-placeholder" aria-hidden="true" />
                       )}
+                      <span
+                        className={`products-banner-title products-banner-title--mega products-banner-title--${tone}`}
+                        aria-hidden="true"
+                      >
+                        {item.overlayTitle}
+                      </span>
                     </span>
-                    <span className="products-nav-mega-label">{item.label}</span>
-                  </a>
+                  </Link>
                 );
               })}
             </div>
@@ -302,16 +337,17 @@ export function ProductsNavMenu({
           const navLabel =
             item.id === "cut" ? "Orchids" : item.id === "bouquet" ? "Bouquets" : "Loose Blooms";
           return (
-            <a
+            <Link
               key={item.id}
               role="menuitem"
               className={`products-nav-option${selected ? " is-selected" : ""}`}
               href={productsHref(item.id, onProductsPage ? activeFamily : "dendrobium")}
+              scroll={false}
               aria-current={selected ? "true" : undefined}
               onClick={onOptionClick}
             >
               {navLabel}
-            </a>
+            </Link>
           );
         })}
       </div>

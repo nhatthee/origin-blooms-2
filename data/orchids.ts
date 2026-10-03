@@ -168,6 +168,52 @@ const MOKARA_CUT_ORDER: ProductOrderOptions = {
 };
 
 /**
+ * Vanda order sizes confirmed in source packing (stems per tray).
+ * Only S / L / LL — do not enable SS / M.
+ * Stem lengths are not confirmed — never copy lengths from Dendrobium/Mokara.
+ */
+export const VANDA_CUT_STEM_SIZES: ProductStemSize[] = [
+  { id: "S", label: "S" },
+  { id: "L", label: "L" },
+  { id: "LL", label: "LL" },
+];
+
+const VANDA_CUT_ORDER: ProductOrderOptions = {
+  unit: "stems",
+  stemSizes: VANDA_CUT_STEM_SIZES,
+};
+
+/** Shared Vanda cut packing (stems per tray) — same for every Vanda variety. */
+export const VANDA_STEMS_PER_TRAY = {
+  S: "18",
+  L: "16",
+  LL: "14",
+} as const;
+
+/**
+ * Oncidium order sizes confirmed in source packing (stems per tray).
+ * Only M / L / LL — do not enable SS / S.
+ * Stem lengths are not confirmed for Oncidium — never copy from Dendrobium/Mokara.
+ */
+export const ONCIDIUM_CUT_STEM_SIZES: ProductStemSize[] = [
+  { id: "M", label: "M" },
+  { id: "L", label: "L" },
+  { id: "LL", label: "LL" },
+];
+
+const ONCIDIUM_CUT_ORDER: ProductOrderOptions = {
+  unit: "stems",
+  stemSizes: ONCIDIUM_CUT_STEM_SIZES,
+};
+
+/** Shared Oncidium cut packing (stems per tray) for confirmed Golden Shower sizes. */
+export const ONCIDIUM_STEMS_PER_TRAY = {
+  M: "180",
+  L: "160",
+  LL: "140",
+} as const;
+
+/**
  * Shared Dendrobium cut packing (category header / supplier table).
  * Used by every Dendrobium stem variety including dyed — do not duplicate per SKU.
  * “Supplier standard length” may differ from CUT_STEM_LENGTHS used by Stem sizes /
@@ -258,7 +304,7 @@ export type OrchidProduct = {
   packing?: ProductPacking;
   /** When omitted or incomplete, detail page uses Inquire CTA */
   order?: ProductOrderOptions;
-  /** Dyed variety flag — products remain under Dendrobium when true */
+  /** Dyed variety flag — catalog family is `dyed` when true */
   isDyed?: boolean;
   /** Bouquet SKU options — informational table on product details */
   bouquetOptions?: BouquetOption[];
@@ -267,10 +313,11 @@ export type OrchidProduct = {
   /** Bouquets per tray by code and stem-size column (null = not available in source doc) */
   bouquetTrayCounts?: BouquetTrayRow[];
   /**
-   * Confirmed stems-per-tray packing by size (Mokara, etc.).
+   * Confirmed stems-per-tray packing by size (Mokara, Vanda, etc.).
    * Omit sizes that are unavailable — never invent 0 or copy from another genus.
    */
   stemsPerTray?: {
+    S?: string;
     M?: string;
     L?: string;
     LL?: string;
@@ -377,6 +424,7 @@ function dendrobiumCut(opts: {
     ...(opts.extraImages ?? []),
   ]);
 
+  const isDyed = Boolean(opts.isDyed);
   return {
     number: opts.number ?? null,
     slug: opts.slug,
@@ -388,13 +436,17 @@ function dendrobiumCut(opts: {
     imageClass: opts.imageClass ?? "",
     image: primary,
     images,
-    category: opts.category ?? `DENDROBIUM ${opts.name.toUpperCase()}`,
+    category:
+      opts.category ??
+      (isDyed
+        ? `DYED ORCHIDS ${opts.name.toUpperCase()}`
+        : `DENDROBIUM ${opts.name.toUpperCase()}`),
     format: "cut",
-    family: "dendrobium",
+    family: isDyed ? "dyed" : "dendrobium",
     color: opts.color ?? null,
     description: "Fresh-cut orchid stems",
     order: CUT_ORDER,
-    isDyed: opts.isDyed,
+    isDyed: isDyed || undefined,
   };
 }
 
@@ -406,9 +458,19 @@ function mokaraCut(opts: {
   color?: string | null;
   /** Confirmed stems per tray for M / L / LL — omit when unconfirmed */
   stemsPerTray?: { M: string; L: string; LL: string };
+  /** Extra gallery images after the primary catalog photo */
+  extraImages?: ProductImage[];
 }): OrchidProduct {
   const primary = `/images/products/mokara/${opts.imageFile}`;
   const confirmed = Boolean(opts.stemsPerTray && opts.number?.trim() && opts.color?.trim());
+  const images = uniqueProductImages([
+    {
+      src: primary,
+      alt: `${opts.name} fresh-cut Mokara orchid stems`,
+      kind: "product",
+    },
+    ...(opts.extraImages ?? []),
+  ]);
 
   return {
     number: opts.number ?? null,
@@ -419,13 +481,7 @@ function mokaraCut(opts: {
     descriptor: "Fresh-cut Mokara orchid stems",
     imageClass: "",
     image: primary,
-    images: [
-      {
-        src: primary,
-        alt: `${opts.name} fresh-cut Mokara orchid stems`,
-        kind: "product",
-      },
-    ],
+    images,
     category: `MOKARA ${opts.name.toUpperCase()}`,
     format: "cut",
     family: "mokara-aranda",
@@ -434,6 +490,102 @@ function mokaraCut(opts: {
     stemsPerTray: opts.stemsPerTray,
     // Only enable stem inquiry when code, color, and tray packing are confirmed.
     order: confirmed ? MOKARA_CUT_ORDER : undefined,
+  };
+}
+
+function mokaraGalleryExtra(file: string, name: string, label = "additional photo"): ProductImage {
+  return {
+    src: `/images/products/mokara/${file}`,
+    alt: `${name} — ${label}`,
+    kind: "product",
+  };
+}
+
+function vandaGalleryExtra(file: string, name: string, label = "additional photo"): ProductImage {
+  return {
+    src: `/images/products/vanda/${file}`,
+    alt: `${name} — ${label}`,
+    kind: "product",
+  };
+}
+
+function vandaCut(opts: {
+  number: string;
+  slug: string;
+  name: string;
+  detailName: string;
+  imageFile: string;
+  color: string;
+  /** Extra gallery images after the primary catalog photo */
+  extraImages?: ProductImage[];
+}): OrchidProduct {
+  const primary = `/images/products/vanda/${opts.imageFile}`;
+  const images = uniqueProductImages([
+    {
+      src: primary,
+      alt: `${opts.name} fresh-cut orchid stems`,
+      kind: "product",
+    },
+    ...(opts.extraImages ?? []),
+  ]);
+
+  return {
+    number: opts.number,
+    slug: opts.slug,
+    name: opts.name,
+    detailName: opts.detailName,
+    detailEyebrow: "Product Details",
+    descriptor: "Fresh-cut orchid stems",
+    imageClass: "",
+    image: primary,
+    images,
+    category: `VANDA ${opts.name.toUpperCase()}`,
+    format: "cut",
+    family: "vanda",
+    color: opts.color,
+    description: "Fresh-cut orchid stems",
+    stemsPerTray: { ...VANDA_STEMS_PER_TRAY },
+    order: VANDA_CUT_ORDER,
+  };
+}
+
+function oncidiumCut(opts: {
+  number: string;
+  slug: string;
+  name: string;
+  detailName: string;
+  imageFile: string;
+  color: string;
+  /** Extra gallery images after the primary catalog photo */
+  extraImages?: ProductImage[];
+}): OrchidProduct {
+  const primary = `/images/products/oncidium/${opts.imageFile}`;
+  const images = uniqueProductImages([
+    {
+      src: primary,
+      alt: `${opts.name} fresh-cut orchid stems`,
+      kind: "product",
+    },
+    ...(opts.extraImages ?? []),
+  ]);
+
+  return {
+    number: opts.number,
+    slug: opts.slug,
+    name: opts.name,
+    detailName: opts.detailName,
+    detailEyebrow: "Product Details",
+    descriptor: "Fresh-cut orchid stems",
+    imageClass: "",
+    image: primary,
+    images,
+    category: `ONCIDIUM ${opts.name.toUpperCase()}`,
+    format: "cut",
+    family: "oncidium",
+    color: opts.color,
+    description: "Fresh-cut orchid stems",
+    stemsPerTray: { ...ONCIDIUM_STEMS_PER_TRAY },
+    order: ONCIDIUM_CUT_ORDER,
   };
 }
 
@@ -844,6 +996,7 @@ export const orchids: OrchidProduct[] = [
     imageFile: "01-calipso.png",
     color: "Purple Tone",
     stemsPerTray: { M: "90", L: "80", LL: "70" },
+    extraImages: [mokaraGalleryExtra("calipso.png", "Calipso")],
   }),
   mokaraCut({
     number: "BCS",
@@ -852,6 +1005,7 @@ export const orchids: OrchidProduct[] = [
     imageFile: "02-big-calipso.png",
     color: "Purple Tone",
     stemsPerTray: { M: "80", L: "70", LL: "60" },
+    extraImages: [mokaraGalleryExtra("big-calipso.png", "Big Calipso")],
   }),
   mokaraCut({
     number: "NR",
@@ -860,6 +1014,7 @@ export const orchids: OrchidProduct[] = [
     imageFile: "03-norah-blue.png",
     color: "Purple Tone",
     stemsPerTray: { M: "80", L: "70", LL: "60" },
+    extraImages: [mokaraGalleryExtra("norah-blue.png", "Norah Blue")],
   }),
   mokaraCut({
     number: null,
@@ -898,6 +1053,7 @@ export const orchids: OrchidProduct[] = [
     imageFile: "08-yellow-kitty.png",
     color: "Yellow Tone",
     stemsPerTray: { M: "80", L: "70", LL: "60" },
+    extraImages: [mokaraGalleryExtra("yellow-kitty.png", "Yellow Kitty")],
   }),
   mokaraCut({
     number: "YL",
@@ -906,6 +1062,7 @@ export const orchids: OrchidProduct[] = [
     imageFile: "09-yellow-salaya.png",
     color: "Yellow Tone",
     stemsPerTray: { M: "90", L: "80", LL: "70" },
+    extraImages: [mokaraGalleryExtra("yellow-salaya.png", "Yellow Salaya")],
   }),
   mokaraCut({
     number: "TM",
@@ -914,6 +1071,7 @@ export const orchids: OrchidProduct[] = [
     imageFile: "10-tammy-yellow.png",
     color: "Yellow Tone",
     stemsPerTray: { M: "90", L: "80", LL: "70" },
+    extraImages: [mokaraGalleryExtra("tammy-yellow.png", "Tammy Yellow")],
   }),
   mokaraCut({
     number: "TR",
@@ -922,6 +1080,7 @@ export const orchids: OrchidProduct[] = [
     imageFile: "11-tangerine.png",
     color: "Orange Tone",
     stemsPerTray: { M: "90", L: "80", LL: "70" },
+    extraImages: [mokaraGalleryExtra("tangerine.png", "Tangerine")],
   }),
   mokaraCut({
     number: "PN",
@@ -930,6 +1089,7 @@ export const orchids: OrchidProduct[] = [
     imageFile: "12-punny.png",
     color: "Yellow Tone",
     stemsPerTray: { M: "80", L: "70", LL: "60" },
+    extraImages: [mokaraGalleryExtra("punny.png", "Punny")],
   }),
   mokaraCut({
     number: "OJ",
@@ -938,6 +1098,7 @@ export const orchids: OrchidProduct[] = [
     imageFile: "13-orange-jubkuan.png",
     color: "Orange Tone",
     stemsPerTray: { M: "80", L: "70", LL: "60" },
+    extraImages: [mokaraGalleryExtra("orange-jubkuan.png", "Orange Jubkuan")],
   }),
   mokaraCut({
     number: "RL",
@@ -946,6 +1107,7 @@ export const orchids: OrchidProduct[] = [
     imageFile: "14-red-salaya.png",
     color: "Red Tone",
     stemsPerTray: { M: "90", L: "80", LL: "70" },
+    extraImages: [mokaraGalleryExtra("red-salaya.png", "Red Salaya")],
   }),
   mokaraCut({
     number: "RB",
@@ -954,6 +1116,7 @@ export const orchids: OrchidProduct[] = [
     imageFile: "15-red-ruby.png",
     color: "Red Tone",
     stemsPerTray: { M: "90", L: "80", LL: "70" },
+    extraImages: [mokaraGalleryExtra("red-ruby.png", "Red Ruby")],
   }),
   mokaraCut({
     number: "RC",
@@ -962,6 +1125,7 @@ export const orchids: OrchidProduct[] = [
     imageFile: "16-red-crystal.png",
     color: "Red Tone",
     stemsPerTray: { M: "90", L: "80", LL: "70" },
+    extraImages: [mokaraGalleryExtra("red-crystal.png", "Red Crystal")],
   }),
   mokaraCut({
     number: "RP",
@@ -970,6 +1134,7 @@ export const orchids: OrchidProduct[] = [
     imageFile: "17-royal-sapphire.png",
     color: "Pink Tone",
     stemsPerTray: { M: "90", L: "80", LL: "70" },
+    extraImages: [mokaraGalleryExtra("royal-sapphire.png", "Royal Sapphire")],
   }),
   mokaraCut({
     number: "PJ",
@@ -978,6 +1143,7 @@ export const orchids: OrchidProduct[] = [
     imageFile: "18-pink-jubkuan.png",
     color: "Pink Tone",
     stemsPerTray: { M: "80", L: "70", LL: "60" },
+    extraImages: [mokaraGalleryExtra("pink-jubkuan.png", "Pink Jubkuan")],
   }),
   mokaraCut({
     number: "TC",
@@ -986,6 +1152,58 @@ export const orchids: OrchidProduct[] = [
     imageFile: "19-tago-cristine.png",
     color: "White Tone",
     stemsPerTray: { M: "80", L: "70", LL: "60" },
+    // Primary remains 19-tago-cristine.png (single bloom); add spray photo with matching pattern.
+    extraImages: [mokaraGalleryExtra("tago-christine.png", "Tago Christine")],
+  }),
+  // Vanda (Orchids → Vanda) — order: Fuce → Patchara → Fushia → Doctor Anek
+  vandaCut({
+    number: "FE",
+    slug: "vanda-fuce",
+    name: "Fuce",
+    detailName: "Van. Fuce",
+    imageFile: "fuce.png",
+    color: "Blue Tone",
+  }),
+  vandaCut({
+    number: "PT",
+    slug: "vanda-patchara",
+    name: "Patchara",
+    detailName: "Van. Patchara",
+    imageFile: "patchara.png",
+    color: "Purple Tone",
+  }),
+  vandaCut({
+    number: "FS",
+    slug: "vanda-fushia",
+    name: "Fushia",
+    detailName: "Van. Fushia",
+    imageFile: "fushia.png",
+    color: "Pink Tone",
+  }),
+  vandaCut({
+    number: "DA",
+    slug: "vanda-doctor-anek",
+    name: "Doctor Anek",
+    detailName: "Van. Doctor Anek",
+    imageFile: "doctor.png",
+    color: "Dark Pink Tone",
+    extraImages: [vandaGalleryExtra("doctor-anek.png", "Doctor Anek")],
+  }),
+  // Oncidium (Orchids → Oncidium) — Golden Shower only (Grower Ramsay deferred: no matched photo)
+  oncidiumCut({
+    number: "ON",
+    slug: "oncidium-golden-shower",
+    name: "Golden Shower",
+    detailName: "Onc. Golden Shower",
+    imageFile: "oncidium.png",
+    color: "Yellow Tone",
+    extraImages: [
+      {
+        src: "/images/products/oncidium/oncidium-2.png",
+        alt: "Golden Shower — spray form",
+        kind: "product",
+      },
+    ],
   }),
   {
     number: null,
@@ -1242,10 +1460,14 @@ export function familyLabel(family: ProductFamily): string {
   return PRODUCT_FAMILIES.find((item) => item.id === family)?.label ?? family;
 }
 
+/** Dendrobium stem packing table — also used by dyed cut stems (same tray/size rules). */
 export function isDendrobiumCutProduct(
   product: Pick<OrchidProduct, "format" | "family">,
 ): boolean {
-  return product.format === "cut" && product.family === "dendrobium";
+  return (
+    product.format === "cut" &&
+    (product.family === "dendrobium" || product.family === "dyed")
+  );
 }
 
 export function stemsPerTrayRows(
@@ -1255,19 +1477,25 @@ export function stemsPerTrayRows(
   if (!tray) return [];
 
   const lengthBySize = new Map(
-    (product.order?.stemSizes ?? MOKARA_CUT_STEM_SIZES).map((size) => [
+    (product.order?.stemSizes ?? []).map((size) => [
       size.id,
-      size.lengthRange?.trim() || CUT_STEM_LENGTHS[size.id] || "",
+      size.lengthRange?.trim() || "",
     ]),
   );
 
+  // Prefer confirmed inquiry size order; otherwise scan known packing keys.
+  const sizeOrder =
+    product.order?.stemSizes?.map((size) => size.id) ??
+    (["S", "M", "L", "LL"] as const).filter((size) => Boolean(tray[size]?.trim()));
+
   const rows: { size: string; stemLength: string; stemsPerTray: string }[] = [];
-  for (const size of ["M", "L", "LL"] as const) {
-    const count = tray[size]?.trim();
+  for (const size of sizeOrder) {
+    const count = tray[size as keyof typeof tray]?.trim();
     if (!count) continue;
     rows.push({
       size,
-      stemLength: lengthBySize.get(size) || CUT_STEM_LENGTHS[size] || "",
+      // Only show length when this product defines it — never invent from another genus.
+      stemLength: lengthBySize.get(size) || "",
       stemsPerTray: count,
     });
   }

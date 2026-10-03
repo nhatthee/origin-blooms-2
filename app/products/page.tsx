@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ProductCatalog } from "../../components/ProductCatalog";
+import { ProductsCatalogFallback } from "../../components/ProductsCatalogFallback";
 import { ProductsPageScroll } from "../../components/ProductsPageScroll";
 import { SiteChrome } from "../../components/SiteChrome";
 import { SiteFooter } from "../../components/SiteFooter";
@@ -15,10 +16,12 @@ export const metadata: Metadata = {
 export default function ProductsPage() {
   return (
     <>
-      <ProductsPageScroll />
+      <Suspense fallback={null}>
+        <ProductsPageScroll />
+      </Suspense>
       <SiteChrome />
       <main>
-        <Suspense fallback={null}>
+        <Suspense fallback={<ProductsCatalogFallback />}>
           <ProductCatalog products={orchids} />
         </Suspense>
       </main>
