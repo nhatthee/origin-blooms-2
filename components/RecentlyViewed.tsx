@@ -30,6 +30,9 @@ type RecentlyViewedProps = {
   currentSlug: string;
 };
 
+/** Continuous marquee speed — slow editorial pace (~18px/sec). */
+const MARQUEE_PX_PER_SEC = 18;
+const RESUME_DELAY_MS = 900;
 const DRAG_CLICK_THRESHOLD_PX = 8;
 
 function ChevronPrevIcon() {
@@ -96,14 +99,59 @@ function resolveCards(slugs: string[], currentSlug: string): RecentlyViewedCard[
   return cards;
 }
 
+function ProductCard({
+  item,
+  clone = false,
+}: {
+  item: RecentlyViewedCard;
+  clone?: boolean;
+}) {
+  return (
+    <article className="recently-viewed-card">
+      <Link
+        className="recently-viewed-link"
+        href={item.href}
+        aria-label={clone ? undefined : `View ${item.name}`}
+        tabIndex={clone ? -1 : undefined}
+        draggable={false}
+        prefetch={false}
+      >
+        <span className="recently-viewed-media">
+          <Image
+            src={item.image}
+            alt={clone ? "" : item.name}
+            fill
+            sizes="(max-width: 760px) 40vw, 180px"
+            className="recently-viewed-image"
+            draggable={false}
+          />
+        </span>
+        <h3 className="recently-viewed-name">{item.name}</h3>
+      </Link>
+    </article>
+  );
+}
+
 export function RecentlyViewed({ currentSlug }: RecentlyViewedProps) {
   const [items, setItems] = useState<RecentlyViewedCard[] | null>(null);
+  const [overflowing, setOverflowing] = useState(false);
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(false);
 
   const stageRef = useRef<HTMLDivElement>(null);
+  const marqueeRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLUListElement>(null);
+  const offsetRef = useRef(0);
+  const loopWidthRef = useRef(0);
+  const rafRef = useRef<number | null>(null);
+  const lastTsRef = useRef<number | null>(null);
+  const pausedRef = useRef(true);
+  const reduceMotionRef = useRef(false);
+  const overflowingRef = useRef(false);
+  const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pointerIdRef = useRef<number | null>(null);
   const dragStartXRef = useRef(0);
+  const dragStartOffsetRef = useRef(0);
   const dragStartScrollRef = useRef(0);
   const dragMovedRef = useRef(false);
   const draggingRef = useRef(false);
@@ -113,11 +161,28 @@ export function RecentlyViewed({ currentSlug }: RecentlyViewedProps) {
     setItems(resolveCards(slugs, currentSlug));
   }, [currentSlug]);
 
-  const syncOverflow = useCallback(() => {
+  const applyTransform = useCallback(() => {
+    const marquee = marqueeRef.current;
+    if (!marquee) return;
+    const loopWidth = loopWidthRef.current;
+    let offset = offsetRef.current;
+    if (loopWidth > 0) {
+      offset = ((offset % loopWidth) + loopWidth) % loopWidth;
+      offsetRef.current = offset;
+    }
+    marquee.style.transform = `translate3d(${-offset}px,0,0)`;
+  }, []);
+
+  const syncScrollNav = useCallback(() => {
     const stage = stageRef.current;
-    if (!stage) {
+    if (!stage || !overflowingRef.current) {
       setCanPrev(false);
       setCanNext(false);
+      return;
+    }
+    if (!reduceMotionRef.current) {
+      setCanPrev(true);
+      setCanNext(true);
       return;
     }
     const maxScroll = Math.max(0, stage.scrollWidth - stage.clientWidth);
@@ -126,44 +191,172 @@ export function RecentlyViewed({ currentSlug }: RecentlyViewedProps) {
     setCanNext(left < maxScroll - 1);
   }, []);
 
+  const measure = useCallback(() => {
+    const stage = stageRef.current;
+    const track = trackRef.current;
+    if (!stage || !track) return;
+
+    const trackWidth = track.offsetWidth;
+    const stageWidth = stage.clientWidth;
+    const nextOverflowing = trackWidth > stageWidth + 1;
+    overflowingRef.current = nextOverflowing;
+    setOverflowing((prev) => (prev === nextOverflowing ? prev : nextOverflowing));
+
+    if (nextOverflowing && !reduceMotionRef.current) {
+      // Track width includes end gap (padding-inline-end) so the clone joins seamlessly.
+      loopWidthRef.current = trackWidth;
+      applyTransform();
+    } else {
+      loopWidthRef.current = 0;
+      offsetRef.current = 0;
+      if (marqueeRef.current) {
+        marqueeRef.current.style.transform = "translate3d(0,0,0)";
+      }
+    }
+    syncScrollNav();
+  }, [applyTransform, syncScrollNav]);
+
+  const clearResumeTimer = useCallback(() => {
+    if (resumeTimerRef.current != null) {
+      clearTimeout(resumeTimerRef.current);
+      resumeTimerRef.current = null;
+    }
+  }, []);
+
+  const pauseMarquee = useCallback(() => {
+    pausedRef.current = true;
+    lastTsRef.current = null;
+    clearResumeTimer();
+  }, [clearResumeTimer]);
+
+  const resumeMarquee = useCallback(
+    (delayMs = 0) => {
+      clearResumeTimer();
+      if (reduceMotionRef.current || !overflowingRef.current) {
+        pausedRef.current = true;
+        return;
+      }
+      const start = () => {
+        pausedRef.current = false;
+        lastTsRef.current = null;
+      };
+      if (delayMs > 0) {
+        resumeTimerRef.current = setTimeout(start, delayMs);
+      } else {
+        start();
+      }
+    },
+    [clearResumeTimer],
+  );
+
+  const stepByCard = useCallback(
+    (direction: -1 | 1) => {
+      const track = trackRef.current;
+      const card = track?.querySelector<HTMLElement>(".recently-viewed-card");
+      const stage = stageRef.current;
+      if (!track || !card || !stage) return;
+      const styles = window.getComputedStyle(track);
+      const gap = Number.parseFloat(styles.columnGap || styles.gap || "0") || 0;
+      const step = card.getBoundingClientRect().width + gap;
+
+      if (overflowingRef.current && !reduceMotionRef.current) {
+        pauseMarquee();
+        offsetRef.current += direction * step;
+        applyTransform();
+        resumeMarquee(RESUME_DELAY_MS);
+        return;
+      }
+
+      stage.scrollBy({ left: direction * step, behavior: "smooth" });
+    },
+    [applyTransform, pauseMarquee, resumeMarquee],
+  );
+
   useEffect(() => {
     if (!items || items.length === 0) return;
+
+    const reduceMq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const syncReduce = () => {
+      reduceMotionRef.current = reduceMq.matches;
+      measure();
+      if (reduceMq.matches || !overflowingRef.current) {
+        pauseMarquee();
+      } else if (!draggingRef.current) {
+        resumeMarquee(0);
+      }
+    };
+    syncReduce();
+    reduceMq.addEventListener("change", syncReduce);
+
     const stage = stageRef.current;
-    if (!stage) return;
+    const track = trackRef.current;
+    const ro = new ResizeObserver(() => {
+      measure();
+      if (!reduceMotionRef.current && overflowingRef.current && !draggingRef.current) {
+        resumeMarquee(0);
+      } else if (!overflowingRef.current || reduceMotionRef.current) {
+        pauseMarquee();
+      }
+    });
+    if (stage) ro.observe(stage);
+    if (track) ro.observe(track);
 
-    syncOverflow();
-    const onScroll = () => syncOverflow();
-    stage.addEventListener("scroll", onScroll, { passive: true });
+    const onScroll = () => syncScrollNav();
+    stage?.addEventListener("scroll", onScroll, { passive: true });
 
-    const ro = new ResizeObserver(() => syncOverflow());
-    ro.observe(stage);
-    for (const child of Array.from(stage.children)) {
-      if (child instanceof HTMLElement) ro.observe(child);
-    }
+    const tick = (ts: number) => {
+      if (
+        !pausedRef.current &&
+        !reduceMotionRef.current &&
+        overflowingRef.current &&
+        loopWidthRef.current > 0
+      ) {
+        if (lastTsRef.current != null) {
+          const dt = Math.min(64, ts - lastTsRef.current) / 1000;
+          offsetRef.current += MARQUEE_PX_PER_SEC * dt;
+          applyTransform();
+        }
+        lastTsRef.current = ts;
+      } else {
+        lastTsRef.current = null;
+      }
+      rafRef.current = window.requestAnimationFrame(tick);
+    };
+    rafRef.current = window.requestAnimationFrame(tick);
 
     return () => {
-      stage.removeEventListener("scroll", onScroll);
+      reduceMq.removeEventListener("change", syncReduce);
       ro.disconnect();
+      stage?.removeEventListener("scroll", onScroll);
+      clearResumeTimer();
+      if (rafRef.current != null) window.cancelAnimationFrame(rafRef.current);
     };
-  }, [items, syncOverflow]);
-
-  const stepByCard = useCallback((direction: -1 | 1) => {
-    const stage = stageRef.current;
-    const card = stage?.querySelector<HTMLElement>(".recently-viewed-card");
-    if (!stage || !card) return;
-    const styles = window.getComputedStyle(stage);
-    const gap = Number.parseFloat(styles.columnGap || styles.gap || "0") || 0;
-    const step = card.getBoundingClientRect().width + gap;
-    stage.scrollBy({ left: direction * step, behavior: "smooth" });
-  }, []);
+  }, [
+    applyTransform,
+    clearResumeTimer,
+    items,
+    measure,
+    pauseMarquee,
+    resumeMarquee,
+    syncScrollNav,
+  ]);
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
+    if (!overflowingRef.current) return;
+
     draggingRef.current = true;
     dragMovedRef.current = false;
     pointerIdRef.current = event.pointerId;
     dragStartXRef.current = event.clientX;
-    dragStartScrollRef.current = stageRef.current?.scrollLeft ?? 0;
+
+    if (reduceMotionRef.current) {
+      dragStartScrollRef.current = stageRef.current?.scrollLeft ?? 0;
+      return;
+    }
+
+    pauseMarquee();
+    dragStartOffsetRef.current = offsetRef.current;
   };
 
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -171,13 +364,20 @@ export function RecentlyViewed({ currentSlug }: RecentlyViewedProps) {
     const stage = stageRef.current;
     if (!stage) return;
     const dx = event.clientX - dragStartXRef.current;
-    if (Math.abs(dx) >= DRAG_CLICK_THRESHOLD_PX) {
-      if (!dragMovedRef.current) {
-        dragMovedRef.current = true;
-        stage.setPointerCapture(event.pointerId);
-      }
-      stage.scrollLeft = dragStartScrollRef.current - dx;
+    if (Math.abs(dx) < DRAG_CLICK_THRESHOLD_PX) return;
+
+    if (!dragMovedRef.current) {
+      dragMovedRef.current = true;
+      stage.setPointerCapture(event.pointerId);
     }
+
+    if (reduceMotionRef.current) {
+      stage.scrollLeft = dragStartScrollRef.current - dx;
+      return;
+    }
+
+    offsetRef.current = dragStartOffsetRef.current - dx;
+    applyTransform();
   };
 
   const endDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -188,6 +388,9 @@ export function RecentlyViewed({ currentSlug }: RecentlyViewedProps) {
     const stage = stageRef.current;
     if (stage?.hasPointerCapture(event.pointerId)) {
       stage.releasePointerCapture(event.pointerId);
+    }
+    if (!reduceMotionRef.current && overflowingRef.current) {
+      resumeMarquee(RESUME_DELAY_MS);
     }
     if (!wasDragging) dragMovedRef.current = false;
   };
@@ -202,7 +405,7 @@ export function RecentlyViewed({ currentSlug }: RecentlyViewedProps) {
   // Avoid SSR / hydration mismatch: render nothing until client history is known.
   if (items === null || items.length === 0) return null;
 
-  const showNav = canPrev || canNext;
+  const showNav = overflowing;
 
   return (
     <section
@@ -216,7 +419,7 @@ export function RecentlyViewed({ currentSlug }: RecentlyViewedProps) {
       </header>
 
       <div
-        className="recently-viewed-stage"
+        className={`recently-viewed-stage${overflowing ? " recently-viewed-stage--overflow" : ""}`}
         ref={stageRef}
         aria-label="Recently viewed products"
         onPointerDown={onPointerDown}
@@ -224,34 +427,42 @@ export function RecentlyViewed({ currentSlug }: RecentlyViewedProps) {
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
         onClickCapture={onClickCapture}
+        onMouseEnter={() => {
+          if (window.matchMedia("(hover: hover)").matches) pauseMarquee();
+        }}
+        onMouseLeave={() => {
+          if (window.matchMedia("(hover: hover)").matches && !draggingRef.current) {
+            resumeMarquee(0);
+          }
+        }}
+        onFocusCapture={pauseMarquee}
+        onBlurCapture={(event) => {
+          const stage = stageRef.current;
+          if (!stage) return;
+          const next = event.relatedTarget;
+          if (next instanceof Node && stage.contains(next)) return;
+          if (!draggingRef.current) resumeMarquee(RESUME_DELAY_MS);
+        }}
       >
-        <ul className="recently-viewed-track">
-          {items.map((item) => (
-            <li key={item.slug}>
-              <article className="recently-viewed-card">
-                <Link
-                  className="recently-viewed-link"
-                  href={item.href}
-                  aria-label={`View ${item.name}`}
-                  draggable={false}
-                  prefetch={false}
-                >
-                  <span className="recently-viewed-media">
-                    <Image
-                      src={item.image}
-                      alt={item.name}
-                      fill
-                      sizes="(max-width: 760px) 40vw, 180px"
-                      className="recently-viewed-image"
-                      draggable={false}
-                    />
-                  </span>
-                  <h3 className="recently-viewed-name">{item.name}</h3>
-                </Link>
-              </article>
-            </li>
-          ))}
-        </ul>
+        <div className="recently-viewed-marquee" ref={marqueeRef}>
+          <ul className="recently-viewed-track" ref={trackRef}>
+            {items.map((item) => (
+              <li key={item.slug}>
+                <ProductCard item={item} />
+              </li>
+            ))}
+          </ul>
+          <ul
+            className="recently-viewed-track recently-viewed-track--clone"
+            aria-hidden="true"
+          >
+            {items.map((item) => (
+              <li key={`clone-${item.slug}`}>
+                <ProductCard item={item} clone />
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
 
       {showNav ? (

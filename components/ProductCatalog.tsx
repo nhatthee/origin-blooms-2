@@ -147,7 +147,7 @@ function ProductCatalogView({
       height: 793,
     },
     loose: {
-      src: "/images/products/loose-blooms/loose-blooms-hero.png",
+      src: "/images/products/loose-blooms/loose-blooms-hero-v2.png",
       alt: "Loose Blooms",
       width: 1983,
       height: 793,

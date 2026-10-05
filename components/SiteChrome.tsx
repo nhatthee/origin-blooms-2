@@ -19,6 +19,9 @@ export function SiteChrome({ homePage = false, alwaysVisible = false }: SiteChro
   const suppressHideRef = useRef(false);
   const [hidden, setHidden] = useState(false);
 
+  // TEMP: hide top announcement bar site-wide. Set true to restore.
+  const showAnnouncement = false;
+
   useEffect(() => {
     // iOS Safari can keep a stale status-bar / overscroll sample after client
     // navigations. Re-assert white so pull-to-refresh stays #FFFFFF.
@@ -131,7 +134,7 @@ export function SiteChrome({ homePage = false, alwaysVisible = false }: SiteChro
       >
         {/* Real painted safe-area band (padding-top alone fails on some iOS/alwaysVisible paints). */}
         <div className="site-chrome-safe" aria-hidden="true" />
-        <Announcement />
+        {showAnnouncement ? <Announcement /> : null}
         <SiteHeader homePage={homePage} />
       </div>
     </>

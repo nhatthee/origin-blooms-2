@@ -443,7 +443,8 @@ function dendrobiumCut(opts: {
     number: opts.number ?? null,
     slug: opts.slug,
     name: opts.name,
-    detailName: `Den. ${opts.name}`,
+    // Dyed names already include “Dyed …”; only Dendrobium cuts use the Den. prefix.
+    detailName: isDyed ? opts.name : `Den. ${opts.name}`,
     detailEyebrow: "Product Details",
     descriptor: "Fresh-cut orchid stems",
     tagline: opts.tagline,
@@ -851,7 +852,7 @@ export const orchids: OrchidProduct[] = [
     name: "Morning Blossom",
     imageFile: "morning-blossom.png",
     color: "Two Tone",
-    extraImages: [dendrobiumGalleryExtra("morning-bloom-2.png", "Morning Blossom")],
+    extraImages: [dendrobiumGalleryExtra("morning-blossom-2.png", "Morning Blossom")],
   }),
   // 27
   dendrobiumCut({
@@ -869,6 +870,7 @@ export const orchids: OrchidProduct[] = [
     name: "Sugar Sweet",
     imageFile: "sugar-sweet.png",
     color: "Magenta Tone",
+    extraImages: [dendrobiumGalleryExtra("sugar-sweet-2.png", "Sugar Sweet")],
   }),
   // 29
   dendrobiumCut({
@@ -877,6 +879,7 @@ export const orchids: OrchidProduct[] = [
     name: "Anna",
     imageFile: "anna.png",
     color: "Magenta Tone",
+    extraImages: [dendrobiumGalleryExtra("anna-2.png", "Anna")],
   }),
   // 30
   dendrobiumCut({
@@ -1495,9 +1498,9 @@ export function formatLabel(format: ProductFormat): string {
   return PRODUCT_FORMATS.find((item) => item.id === format)?.label ?? "Products";
 }
 
-/** Short breadcrumb / nav label for product formats (Orchids / Bouquets / Loose Blooms). */
+/** Short breadcrumb / nav label for product formats (Cut Orchids / Bouquets / Loose Blooms). */
 export function formatNavLabel(format: ProductFormat): string {
-  if (format === "cut") return "Orchids";
+  if (format === "cut") return "Cut Orchids";
   if (format === "bouquet") return "Bouquets";
   return "Loose Blooms";
 }

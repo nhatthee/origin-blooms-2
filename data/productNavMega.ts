@@ -116,7 +116,7 @@ export const PRODUCT_NAV_MEGA_ITEMS: ProductNavMegaItem[] = [
     id: "loose",
     label: "Loose Blooms",
     overlayTitle: PRODUCT_CATEGORY_OVERLAY_TITLES.loose,
-    imageSrc: "/images/products/loose-blooms/loose-blooms-mega-menu.png",
+    imageSrc: "/images/products/loose-blooms/loose-blooms-mega-menu-v2.png",
   },
 ];
 

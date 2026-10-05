@@ -1,4 +1,9 @@
-export const INTEREST_OPTIONS = ["Cut Orchids", "Loose Blooms", "Both"] as const;
+export const INTEREST_OPTIONS = [
+  "Cut Orchids",
+  "Loose Blooms",
+  "Bouquets",
+  "All Products",
+] as const;
 
 export type InterestOption = (typeof INTEREST_OPTIONS)[number];
 

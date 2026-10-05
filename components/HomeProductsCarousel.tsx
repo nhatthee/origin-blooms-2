@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import {
   useCallback,
   useEffect,
@@ -17,6 +18,8 @@ export type HomeStoryCard = {
   lead: string;
   body: string;
   imageSrc: string;
+  /** Optional destination for the card image and title only. */
+  href?: string;
 };
 
 type HomeProductsCarouselProps = {
@@ -323,19 +326,41 @@ export function HomeProductsCarousel({ cards }: HomeProductsCarouselProps) {
                 key={`${setIndex}-${card.id}`}
                 data-logical-index={logicalIndex}
               >
-                <div className="product-photo photo-slot has-photo">
-                  <Image
-                    src={card.imageSrc}
-                    alt={card.title}
-                    fill
-                    sizes="(max-width: 760px) 92vw, 32vw"
-                    className={`product-photo-media product-photo-media--${card.id}`}
-                  />
-                </div>
+                {card.href ? (
+                  <Link
+                    href={card.href}
+                    className="product-photo photo-slot has-photo"
+                    aria-label={card.title}
+                  >
+                    <Image
+                      src={card.imageSrc}
+                      alt=""
+                      fill
+                      sizes="(max-width: 760px) 92vw, 32vw"
+                      className={`product-photo-media product-photo-media--${card.id}`}
+                    />
+                  </Link>
+                ) : (
+                  <div className="product-photo photo-slot has-photo">
+                    <Image
+                      src={card.imageSrc}
+                      alt={card.title}
+                      fill
+                      sizes="(max-width: 760px) 92vw, 32vw"
+                      className={`product-photo-media product-photo-media--${card.id}`}
+                    />
+                  </div>
+                )}
                 <div className="product-info">
                   <div className="product-copy">
                     <div className="product-title-row">
-                      <h3>{card.title}</h3>
+                      <h3>
+                        {card.href ? (
+                          <Link href={card.href}>{card.title}</Link>
+                        ) : (
+                          card.title
+                        )}
+                      </h3>
                     </div>
                     <p className="product-lead">
                       <em>{card.lead}</em>

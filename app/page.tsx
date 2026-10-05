@@ -46,6 +46,7 @@ const homeStoryCards = [
     lead: "Beauty begins at the source.",
     body: "We believe a flower’s story matters as much as the moment it creates. From Thai farms to floral professionals across the United States, we give every Dendrobium orchid a new place to inspire.",
     imageSrc: "/images/story/our-vision.png",
+    href: "/about-us",
   },
   {
     id: "02",

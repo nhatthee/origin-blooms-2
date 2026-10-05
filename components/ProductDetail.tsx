@@ -14,20 +14,21 @@ import {
   displayBouquetTrayCount,
   displayProductCode,
   displayProductColor,
-  familyLabel,
   formatLabel,
-  formatNavLabel,
   hasBouquetOptions,
   isDendrobiumCutProduct,
   isLooseBloomProduct,
   looseBloomTotalFromPackQuantities,
   packingLines,
-  productsHref,
   stemsPerTrayRows,
   type OrchidProduct,
   type ProductFamily,
   type ProductFormat,
 } from "../data/orchids";
+import {
+  productNavMegaHref,
+  productNavMegaItemForCatalog,
+} from "../data/productNavMega";
 import { parseNonNegativeIntInput, parsePositiveIntInput } from "../lib/inquiry";
 import { BouquetInquiryForm } from "./BouquetInquiryForm";
 import { useInquiry } from "./InquiryProvider";
@@ -78,8 +79,14 @@ export function ProductDetail({ product }: ProductDetailProps) {
   const activeImage = images[activeIndex] ?? images[0];
   const orderReady = canAddToInquiry(product);
   const packing = packingLines(product);
-  const formatCrumbHref = productsHref(product.format);
-  const familyCrumbHref = productsHref(product.format, product.family);
+  const taxonomyCrumb = productNavMegaItemForCatalog(
+    product.format,
+    product.family,
+  );
+  const taxonomyCrumbHref = taxonomyCrumb
+    ? productNavMegaHref(taxonomyCrumb)
+    : "/products";
+  const taxonomyCrumbLabel = taxonomyCrumb?.label ?? "Products";
   const detailEyebrow = product.detailEyebrow?.trim() || "Product Details";
   const detailTitle = product.detailName?.trim() || product.name;
   const bouquetOptions = product.bouquetOptions ?? [];
@@ -208,11 +215,9 @@ export function ProductDetail({ product }: ProductDetailProps) {
       <nav className="product-breadcrumb" aria-label="Breadcrumb">
         <Link href="/products">Products</Link>
         <span aria-hidden="true">/</span>
-        <Link href={formatCrumbHref}>{formatNavLabel(product.format)}</Link>
+        <Link href={taxonomyCrumbHref}>{taxonomyCrumbLabel}</Link>
         <span aria-hidden="true">/</span>
-        <Link href={familyCrumbHref}>{familyLabel(product.family)}</Link>
-        <span aria-hidden="true">/</span>
-        <span aria-current="page">{product.name}</span>
+        <span aria-current="page">{detailTitle}</span>
       </nav>
 
       <div className="product-detail-layout">

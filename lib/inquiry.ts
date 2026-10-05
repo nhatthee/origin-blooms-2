@@ -447,7 +447,7 @@ export function totalStems(items: InquiryItem[]): number {
 export function formatInquirySummary(items: InquiryItem[]): {
   message: string;
   quantity: string;
-  interestedIn: "Cut Orchids" | "Loose Blooms" | "Both" | "";
+  interestedIn: "Cut Orchids" | "Loose Blooms" | "Bouquets" | "All Products" | "";
 } {
   if (items.length === 0) {
     return { message: "", quantity: "", interestedIn: "" };
@@ -489,14 +489,18 @@ export function formatInquirySummary(items: InquiryItem[]): {
 
   const hasCut = items.some((item) => item.format === "cut");
   const hasLoose = items.some((item) => item.format === "loose");
+  const hasBouquet = items.some((item) => item.format === "bouquet");
+  const formatCount = Number(hasCut) + Number(hasLoose) + Number(hasBouquet);
   const interestedIn =
-    hasCut && hasLoose
-      ? "Both"
-      : hasLoose
-        ? "Loose Blooms"
-        : hasCut
+    formatCount === 3
+      ? "All Products"
+      : formatCount === 1
+        ? hasCut
           ? "Cut Orchids"
-          : "";
+          : hasLoose
+            ? "Loose Blooms"
+            : "Bouquets"
+        : "";
 
   const quantityParts = [
     ...totalsByUnit(items).map((row) => `${row.total} ${row.unit}`),
