@@ -343,55 +343,59 @@ export function ProductsNavMenu({
           id={dropdownMenuId}
           role="region"
           aria-label="Product categories"
-          hidden={!open}
+          aria-hidden={!open}
+          inert={open ? undefined : true}
         >
-          <ul className="mobile-products-list">
-            {PRODUCT_NAV_MEGA_ITEMS.map((item) => {
-              const selected = isMegaItemActive(
-                item,
-                onProductsPage,
-                activeFormat,
-                activeFamily,
-              );
-              const href = productNavMegaHref(item);
-              const tone = productCategoryOverlayTone(
-                item.id as ProductCategoryOverlayId,
-              );
-              return (
-                <li key={`${item.kind}-${item.id}`} className="mobile-products-item">
-                  <Link
-                    className={`mobile-products-card${selected ? " is-active" : ""}`}
-                    href={href}
-                    scroll={false}
-                    aria-label={item.label}
-                    aria-current={selected ? "true" : undefined}
-                    onClick={onOptionClick}
-                  >
-                    <span className="products-nav-mega-banner mobile-products-banner">
-                      {item.imageSrc ? (
-                        <Image
-                          src={item.imageSrc}
-                          alt=""
-                          fill
-                          sizes="95vw"
-                          className="products-nav-mega-media"
-                        />
-                      ) : (
-                        <span className="products-nav-mega-media-placeholder" aria-hidden="true" />
-                      )}
-                      <span
-                        className={`products-banner-title products-banner-title--mega products-banner-title--${tone}`}
-                        aria-hidden="true"
-                      >
-                        {item.overlayTitle}
+          <div className="mobile-products-accordion-inner">
+            <ul className="mobile-products-list">
+              {PRODUCT_NAV_MEGA_ITEMS.map((item) => {
+                const selected = isMegaItemActive(
+                  item,
+                  onProductsPage,
+                  activeFormat,
+                  activeFamily,
+                );
+                const href = productNavMegaHref(item);
+                const tone = productCategoryOverlayTone(
+                  item.id as ProductCategoryOverlayId,
+                );
+                return (
+                  <li key={`${item.kind}-${item.id}`} className="mobile-products-item">
+                    <Link
+                      className={`mobile-products-card${selected ? " is-active" : ""}`}
+                      href={href}
+                      scroll={false}
+                      aria-label={item.label}
+                      aria-current={selected ? "true" : undefined}
+                      tabIndex={open ? undefined : -1}
+                      onClick={onOptionClick}
+                    >
+                      <span className="products-nav-mega-banner mobile-products-banner">
+                        {item.imageSrc ? (
+                          <Image
+                            src={item.imageSrc}
+                            alt=""
+                            fill
+                            sizes="95vw"
+                            className="products-nav-mega-media"
+                          />
+                        ) : (
+                          <span className="products-nav-mega-media-placeholder" aria-hidden="true" />
+                        )}
+                        <span
+                          className={`products-banner-title products-banner-title--mega products-banner-title--${tone}`}
+                          aria-hidden="true"
+                        >
+                          {item.overlayTitle}
+                        </span>
                       </span>
-                    </span>
-                    <span className="mobile-products-label">{item.label}</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+                      <span className="mobile-products-label">{item.label}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         </div>
       )}
     </div>
