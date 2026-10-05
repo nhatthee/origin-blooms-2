@@ -3,6 +3,7 @@ import {
   displayProductCode,
   getBouquetTrayRow,
   hasBouquetOptions,
+  LOOSE_BLOOM_LEGACY_PACK_LABELS,
   LOOSE_BLOOM_PACK_BLOOMS,
   orchids,
   type ProductFormat,
@@ -335,6 +336,11 @@ function normalizeStoredItem(entry: unknown): InquiryItem | null {
     const pack = product.order?.packOptions?.find((item) => item.id === id);
     if (pack) {
       optionLabel = pack.label;
+    } else if (id in LOOSE_BLOOM_PACK_BLOOMS) {
+      // Keep retired pack sizes from stored inquiries; never drop or convert qty.
+      if (!optionLabel.trim()) {
+        optionLabel = LOOSE_BLOOM_LEGACY_PACK_LABELS[id] ?? `${id} Blooms`;
+      }
     }
   }
 
@@ -597,12 +603,21 @@ export function sanitizeInquirySubmission(raw: unknown): InquiryItem[] | null {
       sizeLabel = size.label;
       lengthRange = size.lengthRange;
       optionLabel = sizeOptionLabel(size.label, size.lengthRange);
-    } else if (packOptions.length > 0) {
+    } else if (product.format === "loose" || packOptions.length > 0) {
       if (!optionKey.startsWith("pack:")) return null;
       const id = optionKey.slice(5);
       const pack = packOptions.find((item) => item.id === id);
-      if (!pack) return null;
-      optionLabel = pack.label;
+      if (pack) {
+        optionLabel = pack.label;
+      } else if (id in LOOSE_BLOOM_PACK_BLOOMS) {
+        // Allow legacy loose pack lines still present in the submitted inquiry list.
+        const storedLabel =
+          typeof value.optionLabel === "string" ? value.optionLabel.trim() : "";
+        optionLabel =
+          storedLabel || LOOSE_BLOOM_LEGACY_PACK_LABELS[id] || `${id} Blooms`;
+      } else {
+        return null;
+      }
     } else if (optionKey !== "default") {
       return null;
     }

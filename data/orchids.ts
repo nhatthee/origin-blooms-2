@@ -52,22 +52,33 @@ export type ProductOrderOptions = {
 };
 
 /**
- * Shared Loose Blooms pack sizes (packs × blooms).
- * Used by both Sonia and Big White detail / inquiry — do not invent cartons or weights.
+ * Shared Loose Blooms pack sizes offered in the product UI / new inquiry lines.
+ * Quantity entered by the buyer is packs; blooms are derived (packs × blooms per pack).
  */
 export const LOOSE_BLOOM_PACK_OPTIONS: ProductPackOption[] = [
+  { id: "50", label: "50 Blooms" },
   { id: "100", label: "100 Blooms" },
-  { id: "500", label: "500 Blooms" },
-  { id: "1000", label: "1,000 Blooms" },
-  { id: "5000", label: "5,000 Blooms / Master" },
 ];
 
-/** Blooms represented by one pack of each Loose Bloom pack option. */
+/**
+ * Blooms represented by one pack.
+ * Includes retired pack ids so stored inquiry lines (500 / 1,000 / 5,000) still
+ * total correctly — do not convert or drop those quantities.
+ */
 export const LOOSE_BLOOM_PACK_BLOOMS: Record<string, number> = {
+  "50": 50,
   "100": 100,
+  // Legacy sizes no longer offered in the UI
   "500": 500,
   "1000": 1000,
   "5000": 5000,
+};
+
+/** Labels for retired Loose Bloom pack ids kept only for stored inquiry display. */
+export const LOOSE_BLOOM_LEGACY_PACK_LABELS: Record<string, string> = {
+  "500": "500 Blooms",
+  "1000": "1,000 Blooms",
+  "5000": "5,000 Blooms / Master",
 };
 
 export type LooseBloomPackingRow = {
@@ -78,30 +89,19 @@ export type LooseBloomPackingRow = {
 
 export const LOOSE_BLOOM_PACKING_ROWS: LooseBloomPackingRow[] = [
   {
+    packSize: "50 Blooms",
+    innerPack: "1 pack containing 50 blooms",
+    exportPacking: "Packed in a master carton",
+  },
+  {
     packSize: "100 Blooms",
-    innerPack: "1 × 100-bloom pack",
-    exportPacking: "Consolidated",
-  },
-  {
-    packSize: "500 Blooms",
-    innerPack: "1 × 500-bloom pack",
-    exportPacking: "Consolidated",
-  },
-  {
-    packSize: "1,000 Blooms",
-    innerPack: "1 × 1,000-bloom pack",
-    exportPacking: "Wholesale Pack",
-  },
-  {
-    packSize: "5,000 Blooms",
-    innerPack: "5 × 1,000-bloom packs",
-    exportPacking: "1 Master Carton",
+    innerPack: "1 pack containing 100 blooms",
+    exportPacking: "Packed in a master carton",
   },
 ];
 
-export const LOOSE_BLOOM_MASTER_CARTON_NOTE = "5,000 loose blooms per master carton";
-export const LOOSE_BLOOM_PACKAGING_NOTE =
-  "Protective inner packing designed to preserve petal shape and freshness during transit.";
+export const LOOSE_BLOOM_MASTER_CARTON_NOTE =
+  "Individual packs are consolidated into a protective master carton for shipping.";
 
 const LOOSE_BLOOM_ORDER: ProductOrderOptions = {
   unit: "packs",
@@ -1286,14 +1286,24 @@ export const orchids: OrchidProduct[] = [
   {
     number: "03",
     slug: "loose-blooms-sonia",
-    name: "Loose Blooms",
+    name: "Loose Bloom Sonia",
     descriptor: "Individual purple orchid for garnish",
     imageClass: "loose-image",
-    image: "/images/products/loose-bloom-sonia.png",
+    image: "/images/products/loose-blooms/loose-blooms-sonia.png",
     images: [
       {
-        src: "/images/products/loose-bloom-sonia.png",
-        alt: "Loose Blooms — Dendrobium Sonia",
+        src: "/images/products/loose-blooms/loose-blooms-sonia.png",
+        alt: "Loose Bloom Sonia",
+        kind: "product",
+      },
+      {
+        src: "/images/products/loose-blooms/loose-blooms-sonia-1.png",
+        alt: "Loose Bloom Sonia — additional photo",
+        kind: "product",
+      },
+      {
+        src: "/images/products/loose-blooms/loose-blooms-sonia-2.png",
+        alt: "Loose Bloom Sonia — additional photo",
         kind: "product",
       },
     ],
@@ -1307,14 +1317,24 @@ export const orchids: OrchidProduct[] = [
   {
     number: "04",
     slug: "loose-blooms-big-white",
-    name: "Loose Blooms",
+    name: "Loose Bloom White",
     descriptor: "Individual white orchids for garnish",
     imageClass: "new-collection-image",
-    image: "/images/products/loose-bloom-white.png",
+    image: "/images/products/loose-blooms/loose-blooms-big-white-form.png",
     images: [
       {
-        src: "/images/products/loose-bloom-white.png",
-        alt: "Loose Blooms — Dendrobium Big White",
+        src: "/images/products/loose-blooms/loose-blooms-big-white-form.png",
+        alt: "Loose Bloom White",
+        kind: "product",
+      },
+      {
+        src: "/images/products/loose-blooms/loose-blooms-big-white-form-1.png",
+        alt: "Loose Bloom White — additional photo",
+        kind: "product",
+      },
+      {
+        src: "/images/products/loose-blooms/loose-blooms-big-white-form-2.png",
+        alt: "Loose Bloom White — additional photo",
         kind: "product",
       },
     ],

@@ -6,7 +6,6 @@ import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import {
   DENDROBIUM_SUPPLIER_PACKING,
   LOOSE_BLOOM_MASTER_CARTON_NOTE,
-  LOOSE_BLOOM_PACKAGING_NOTE,
   LOOSE_BLOOM_PACKING_ROWS,
   MOKARA_BOX_DIMENSION_REMARKS,
   UNKNOWN_DETAIL,
@@ -32,6 +31,7 @@ import {
 import { parseNonNegativeIntInput, parsePositiveIntInput } from "../lib/inquiry";
 import { BouquetInquiryForm } from "./BouquetInquiryForm";
 import { useInquiry } from "./InquiryProvider";
+import { RecentlyViewed } from "./RecentlyViewed";
 
 type ProductDetailProps = {
   product: OrchidProduct;
@@ -439,9 +439,9 @@ export function ProductDetail({ product }: ProductDetailProps) {
                   <table className="product-detail-info-table product-detail-loose-packing-table">
                     <thead>
                       <tr>
-                        <th scope="col">Pack size</th>
-                        <th scope="col">Inner pack</th>
-                        <th scope="col">Export packing</th>
+                        <th scope="col">Pack Size</th>
+                        <th scope="col">Inner Packing</th>
+                        <th scope="col">Outer Packing</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -459,10 +459,6 @@ export function ProductDetail({ product }: ProductDetailProps) {
                   <div>
                     <dt>Master Carton</dt>
                     <dd>{LOOSE_BLOOM_MASTER_CARTON_NOTE}</dd>
-                  </div>
-                  <div>
-                    <dt>Packaging</dt>
-                    <dd>{LOOSE_BLOOM_PACKAGING_NOTE}</dd>
                   </div>
                 </dl>
               </div>
@@ -551,8 +547,8 @@ export function ProductDetail({ product }: ProductDetailProps) {
                     <table className="product-size-table product-detail-loose-qty-table">
                       <thead>
                         <tr>
-                          <th scope="col">Pack size</th>
-                          <th scope="col">Quantity</th>
+                          <th scope="col">Pack Size</th>
+                          <th scope="col">Quantity (Packs)</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -702,6 +698,8 @@ export function ProductDetail({ product }: ProductDetailProps) {
           </div>
         </div>
       ) : null}
+
+      <RecentlyViewed currentSlug={product.slug} />
 
       {lightboxOpen ? (
         <div

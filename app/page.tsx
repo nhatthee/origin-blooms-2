@@ -1,9 +1,39 @@
 import Image from "next/image";
 import { Arrow } from "../components/Arrow";
+import { FeaturedOrchids } from "../components/FeaturedOrchids";
 import { HomeProductsCarousel } from "../components/HomeProductsCarousel";
 import { ProductsHashScroll } from "../components/ProductsHashScroll";
 import { SiteChrome } from "../components/SiteChrome";
 import { SiteFooter } from "../components/SiteFooter";
+import { getOrchidBySlug, productDetailHref } from "../data/orchids";
+
+/**
+ * Home featured strip — fixed order from live catalog SKUs.
+ * `label` is Featured-only display text; catalog product names stay unchanged.
+ */
+const FEATURED_ORCHIDS = [
+  { slug: "sonia-purple", label: "Den. Sonia" },
+  { slug: "big-white", label: "Den. Big White Form" },
+  { slug: "mokara-pink-jubkuan", label: "Mok. Pink Jubkuan" },
+  { slug: "vanda-patchara", label: "Van. Patchara" },
+  { slug: "dyed-yellow-sonia", label: "Dyed Yellow Sonia" },
+] as const;
+
+const featuredOrchids = FEATURED_ORCHIDS.flatMap(({ slug, label }) => {
+  const product = getOrchidBySlug(slug);
+  if (!product) return [];
+  return [
+    {
+      slug: product.slug,
+      name: label,
+      image: product.image,
+      href: productDetailHref(product.slug, {
+        format: product.format,
+        family: product.family,
+      }),
+    },
+  ];
+});
 
 /**
  * Home story cards — kept independent from catalog product codes (SN, BWF, …).
@@ -83,6 +113,8 @@ export default function Home() {
         <section className="collection section-shell" id="collection" aria-label="Products">
           <HomeProductsCarousel cards={homeStoryCards} />
         </section>
+
+        <FeaturedOrchids items={featuredOrchids} />
 
         <section className="story" id="story" aria-labelledby="story-title">
           <div className="story-visual">

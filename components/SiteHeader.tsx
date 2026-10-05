@@ -12,7 +12,11 @@ import {
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { useInquiry } from "./InquiryProvider";
-import { CLOSE_MOBILE_NAV_EVENT, ProductsNavMenu } from "./ProductsNavLink";
+import {
+  CLOSE_MOBILE_NAV_EVENT,
+  ProductsNavCaret,
+  ProductsNavMenu,
+} from "./ProductsNavLink";
 
 type SiteHeaderProps = {
   /** When true, marks the home-page header anchor for in-page scroll. */
@@ -20,7 +24,8 @@ type SiteHeaderProps = {
 };
 
 const MOBILE_NAV_MQ = "(max-width: 760px)";
-const MENU_MOTION_MS = 360;
+
+type MenuPhase = "closed" | "opening" | "open" | "closing";
 
 function isCurrentPath(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -50,9 +55,7 @@ function ProductsNavFallback({ ariaCurrent }: { ariaCurrent?: "page" }) {
         aria-current={ariaCurrent}
       >
         <span className="products-nav-trigger-label">Products</span>
-        <span className="products-nav-caret" aria-hidden="true">
-          ▾
-        </span>
+        <ProductsNavCaret />
       </button>
     </div>
   );
@@ -123,33 +126,6 @@ function LoginPersonIcon() {
   );
 }
 
-function InquiryBagIcon() {
-  return (
-    <svg
-      className="header-icon-svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <path
-        d="M6.5 8.5h11l-.85 10.2a1.5 1.5 0 0 1-1.5 1.3H8.85a1.5 1.5 0 0 1-1.5-1.3L6.5 8.5Z"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M9 8.5V7a3 3 0 0 1 6 0v1.5"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
 function lockBodyScroll(scrollY: number) {
   const { body, documentElement } = document;
   documentElement.classList.add("mobile-nav-open");
@@ -183,25 +159,34 @@ export function SiteHeader({ homePage = false }: SiteHeaderProps) {
     inquiryReady && inquiryCount > 0
       ? `Inquiry (${inquiryCount})`
       : "Inquiry";
-  const showInquiryBadge = inquiryReady && inquiryCount > 0;
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [panelMounted, setPanelMounted] = useState(false);
-  const [panelRevealed, setPanelRevealed] = useState(false);
+  const [phase, setPhase] = useState<MenuPhase>("closed");
+  const [showCloseIcon, setShowCloseIcon] = useState(false);
   const [portalReady, setPortalReady] = useState(false);
   const scrollYRef = useRef(0);
-  const closeTimerRef = useRef<number | null>(null);
   const lockedRef = useRef(false);
-  const menuOpenRef = useRef(menuOpen);
-  const panelRevealedRef = useRef(panelRevealed);
+  const phaseRef = useRef<MenuPhase>(phase);
+  const showCloseIconRef = useRef(false);
+  const panelRef = useRef<HTMLElement | null>(null);
+  const logoRowRef = useRef<HTMLDivElement | null>(null);
 
-  menuOpenRef.current = menuOpen;
-  panelRevealedRef.current = panelRevealed;
+  phaseRef.current = phase;
+  showCloseIconRef.current = showCloseIcon;
 
-  const clearCloseTimer = () => {
-    if (closeTimerRef.current != null) {
-      window.clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = null;
-    }
+  const menuExpanded = phase !== "closed";
+  const panelMounted = phase !== "closed";
+  // Busy while the panel is mid-open or mid-close; X only appears after open settles.
+  const toggleBusy =
+    phase === "opening" || phase === "closing" || (phase === "open" && !showCloseIcon);
+
+  const syncMobileMenuTop = () => {
+    const row = logoRowRef.current;
+    if (!row) return;
+    const top = Math.round(row.getBoundingClientRect().bottom);
+    document.documentElement.style.setProperty("--mobile-menu-top", `${top}px`);
+  };
+
+  const clearMobileMenuTop = () => {
+    document.documentElement.style.removeProperty("--mobile-menu-top");
   };
 
   const releaseScrollLock = () => {
@@ -210,16 +195,76 @@ export function SiteHeader({ homePage = false }: SiteHeaderProps) {
     unlockBodyScroll(scrollYRef.current);
   };
 
+  const ensureScrollLock = () => {
+    if (lockedRef.current) return;
+    scrollYRef.current = Math.max(0, window.scrollY);
+    lockBodyScroll(scrollYRef.current);
+    lockedRef.current = true;
+  };
+
+  const finishClose = () => {
+    const panel = panelRef.current;
+    if (panel) {
+      // Hide before resetting to -100% so the next open never flashes.
+      panel.style.visibility = "hidden";
+      panel.style.pointerEvents = "none";
+      panel.style.transition = "none";
+      panel.style.transform = "translate3d(0, -100%, 0)";
+      void panel.offsetHeight;
+    }
+    setShowCloseIcon(false);
+    showCloseIconRef.current = false;
+    setPhase("closed");
+    clearMobileMenuTop();
+    releaseScrollLock();
+  };
+
+  const requestClose = () => {
+    const current = phaseRef.current;
+    if (current !== "open" || !showCloseIconRef.current) return;
+
+    if (prefersReducedMotion()) {
+      finishClose();
+      return;
+    }
+
+    setPhase("closing");
+  };
+
+  const requestOpen = () => {
+    if (!isMobileNavViewport()) return;
+
+    const current = phaseRef.current;
+    if (current !== "closed") return;
+
+    ensureScrollLock();
+    syncMobileMenuTop();
+    setShowCloseIcon(false);
+    showCloseIconRef.current = false;
+
+    if (prefersReducedMotion()) {
+      setPhase("open");
+      setShowCloseIcon(true);
+      showCloseIconRef.current = true;
+      return;
+    }
+
+    setPhase("opening");
+  };
+
   useEffect(() => {
     setPortalReady(true);
   }, []);
 
   useEffect(() => {
-    setMenuOpen(false);
+    if (phaseRef.current !== "closed") finishClose();
   }, [pathname]);
 
   useEffect(() => {
-    const onCloseRequest = () => setMenuOpen(false);
+    const onCloseRequest = () => {
+      if (phaseRef.current === "open") requestClose();
+      else if (phaseRef.current !== "closed") finishClose();
+    };
     window.addEventListener(CLOSE_MOBILE_NAV_EVENT, onCloseRequest);
     return () => window.removeEventListener(CLOSE_MOBILE_NAV_EVENT, onCloseRequest);
   }, []);
@@ -227,74 +272,53 @@ export function SiteHeader({ homePage = false }: SiteHeaderProps) {
   useEffect(() => {
     const mq = window.matchMedia(MOBILE_NAV_MQ);
     const onViewportChange = () => {
-      if (!mq.matches) setMenuOpen(false);
+      if (!mq.matches && phaseRef.current !== "closed") finishClose();
     };
     mq.addEventListener("change", onViewportChange);
     return () => mq.removeEventListener("change", onViewportChange);
   }, []);
 
   useEffect(() => {
-    if (!menuOpen) return;
+    if (phase !== "open") return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMenuOpen(false);
+      if (event.key === "Escape") requestClose();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [menuOpen]);
+  }, [phase]);
 
   useEffect(() => {
-    clearCloseTimer();
+    if (phase !== "opening") return;
 
-    if (menuOpen) {
-      if (!isMobileNavViewport()) {
-        setMenuOpen(false);
-        return;
-      }
-
-      if (!lockedRef.current) {
-        scrollYRef.current = Math.max(0, window.scrollY);
-        lockBodyScroll(scrollYRef.current);
-        lockedRef.current = true;
-      }
-
-      setPanelMounted(true);
-
-      if (prefersReducedMotion()) {
-        setPanelRevealed(true);
-        return;
-      }
-
-      let outerFrame = 0;
-      let innerFrame = 0;
-      outerFrame = window.requestAnimationFrame(() => {
-        innerFrame = window.requestAnimationFrame(() => setPanelRevealed(true));
+    let outerFrame = 0;
+    let innerFrame = 0;
+    outerFrame = window.requestAnimationFrame(() => {
+      innerFrame = window.requestAnimationFrame(() => {
+        if (phaseRef.current === "opening") setPhase("open");
       });
-      return () => {
-        window.cancelAnimationFrame(outerFrame);
-        window.cancelAnimationFrame(innerFrame);
-      };
-    }
+    });
+    return () => {
+      window.cancelAnimationFrame(outerFrame);
+      window.cancelAnimationFrame(innerFrame);
+    };
+  }, [phase]);
 
-    setPanelRevealed(false);
+  useEffect(() => {
+    if (!panelMounted) return;
 
-    if (prefersReducedMotion()) {
-      setPanelMounted(false);
-      releaseScrollLock();
-      return;
-    }
-
-    closeTimerRef.current = window.setTimeout(() => {
-      closeTimerRef.current = null;
-      setPanelMounted(false);
-      releaseScrollLock();
-    }, MENU_MOTION_MS);
-
-    return clearCloseTimer;
-  }, [menuOpen]);
+    syncMobileMenuTop();
+    const onViewportAlign = () => syncMobileMenuTop();
+    window.addEventListener("resize", onViewportAlign);
+    window.addEventListener("orientationchange", onViewportAlign);
+    return () => {
+      window.removeEventListener("resize", onViewportAlign);
+      window.removeEventListener("orientationchange", onViewportAlign);
+    };
+  }, [panelMounted]);
 
   useEffect(() => {
     return () => {
-      clearCloseTimer();
+      clearMobileMenuTop();
       releaseScrollLock();
     };
   }, []);
@@ -302,17 +326,24 @@ export function SiteHeader({ homePage = false }: SiteHeaderProps) {
   const onPanelTransitionEnd = (event: TransitionEvent<HTMLElement>) => {
     if (event.target !== event.currentTarget) return;
     if (event.propertyName !== "transform") return;
-    if (menuOpenRef.current || panelRevealedRef.current) return;
-    clearCloseTimer();
-    setPanelMounted(false);
-    releaseScrollLock();
+
+    if (phaseRef.current === "closing") {
+      finishClose();
+      return;
+    }
+
+    // Open slide finished: swap hamburger → X in the same toggle.
+    if (phaseRef.current === "open") {
+      showCloseIconRef.current = true;
+      setShowCloseIcon(true);
+    }
   };
 
-  const closeMenu = () => setMenuOpen(false);
+  const closeMenu = () => requestClose();
 
   return (
     <header className="site-header" id={homePage ? "top" : undefined}>
-      <div className="site-header-top">
+      <div className="site-header-top" ref={logoRowRef}>
         <a className="logo" href="/" aria-label="Origin Blooms home">
           <Image
             className="logo-image"
@@ -332,17 +363,18 @@ export function SiteHeader({ homePage = false }: SiteHeaderProps) {
             <Suspense fallback={<ProductsNavFallback ariaCurrent={productsCurrent} />}>
               <ProductsNavMenu aria-current={productsCurrent} />
             </Suspense>
-            <a href="/about-us" aria-current={pageCurrent(pathname, "/about-us")}>
-              About Us
+            <a
+              href="/inquiry"
+              className="inquiry-nav-link"
+              aria-current={inquiryCurrent}
+            >
+              {inquiryLabel}
             </a>
             <a href="/contact" aria-current={pageCurrent(pathname, "/contact")}>
               Contact
             </a>
-            <a href="/resources" aria-current={pageCurrent(pathname, "/resources")}>
-              Resources
-            </a>
           </nav>
-          <div className="header-icon-actions" aria-label="Account and inquiry">
+          <div className="header-icon-actions" aria-label="Account">
             <a
               className="header-icon-link"
               href="/login"
@@ -350,19 +382,6 @@ export function SiteHeader({ homePage = false }: SiteHeaderProps) {
               aria-current={pageCurrent(pathname, "/login")}
             >
               <LoginPersonIcon />
-            </a>
-            <a
-              className="header-icon-link header-icon-link--bag"
-              href="/inquiry"
-              aria-label="View inquiry list"
-              aria-current={inquiryCurrent}
-            >
-              <InquiryBagIcon />
-              {showInquiryBadge ? (
-                <span className="header-inquiry-badge" aria-hidden="true">
-                  {inquiryCount > 99 ? "99+" : inquiryCount}
-                </span>
-              ) : null}
             </a>
           </div>
         </div>
@@ -377,12 +396,17 @@ export function SiteHeader({ homePage = false }: SiteHeaderProps) {
           <button
             type="button"
             className="mobile-menu-toggle"
-            aria-expanded={menuOpen}
+            aria-expanded={menuExpanded}
             aria-controls={navId}
-            aria-label={menuOpen ? "Close navigation" : "Open navigation"}
-            onClick={() => setMenuOpen((current) => !current)}
+            aria-label={showCloseIcon ? "Close navigation" : "Open navigation"}
+            aria-busy={toggleBusy || undefined}
+            onClick={() => {
+              if (toggleBusy) return;
+              if (phase === "open") requestClose();
+              else requestOpen();
+            }}
           >
-            <HamburgerIcon />
+            {showCloseIcon ? <CloseIcon /> : <HamburgerIcon />}
           </button>
         </div>
       </div>
@@ -393,8 +417,12 @@ export function SiteHeader({ homePage = false }: SiteHeaderProps) {
         <Suspense fallback={<ProductsNavFallback ariaCurrent={productsCurrent} />}>
           <ProductsNavMenu aria-current={productsCurrent} />
         </Suspense>
-        <a href="/about-us" aria-current={pageCurrent(pathname, "/about-us")}>
-          About Us
+        <a
+          href="/inquiry"
+          className="inquiry-nav-link"
+          aria-current={inquiryCurrent}
+        >
+          {inquiryLabel}
         </a>
         <a href="/contact" aria-current={pageCurrent(pathname, "/contact")}>
           Contact
@@ -404,50 +432,42 @@ export function SiteHeader({ homePage = false }: SiteHeaderProps) {
         ? createPortal(
             <>
               <div
-                className={`mobile-menu-backdrop${panelRevealed ? " is-open" : ""}`}
+                className={`mobile-menu-backdrop${
+                  phase === "opening" || phase === "open" ? " is-open" : ""
+                }`}
                 aria-hidden="true"
                 onClick={closeMenu}
               />
-              <nav
-                id={navId}
-                className={`mobile-menu-panel${panelRevealed ? " is-open" : ""}`}
-                aria-label="Mobile navigation"
-                aria-hidden={!panelRevealed}
-                onTransitionEnd={onPanelTransitionEnd}
-              >
-                <div className="mobile-menu-panel-inner">
-                  <button
-                    type="button"
-                    className="mobile-menu-close"
-                    aria-label="Close navigation"
-                    onClick={closeMenu}
-                  >
-                    <CloseIcon />
-                  </button>
-                  <a href="/" aria-current={pageCurrent(pathname, "/")}>
-                    Home
-                  </a>
-                  <Suspense fallback={<ProductsNavFallback ariaCurrent={productsCurrent} />}>
-                    <ProductsNavMenu aria-current={productsCurrent} />
-                  </Suspense>
-                  <a href="/about-us" aria-current={pageCurrent(pathname, "/about-us")}>
-                    About Us
-                  </a>
-                  <a href="/contact" aria-current={pageCurrent(pathname, "/contact")}>
-                    Contact
-                  </a>
-                  <a
-                    href="/inquiry"
-                    className="inquiry-nav-link"
-                    aria-current={inquiryCurrent}
-                  >
-                    {inquiryLabel}
-                  </a>
-                  <a href="/login" aria-current={pageCurrent(pathname, "/login")}>
-                    Login
-                  </a>
-                </div>
-              </nav>
+              <div className="mobile-menu-shell" data-phase={phase}>
+                <nav
+                  ref={panelRef}
+                  id={navId}
+                  className="mobile-menu-panel"
+                  data-phase={phase}
+                  aria-label="Mobile navigation"
+                  aria-hidden={!menuExpanded}
+                  inert={phase === "closing" ? true : undefined}
+                  onTransitionEnd={onPanelTransitionEnd}
+                >
+                  <div className="mobile-menu-panel-inner">
+                    <a href="/" aria-current={pageCurrent(pathname, "/")}>
+                      Home
+                    </a>
+                    <Suspense fallback={<ProductsNavFallback ariaCurrent={productsCurrent} />}>
+                      <ProductsNavMenu aria-current={productsCurrent} />
+                    </Suspense>
+                    <a href="/about-us" aria-current={pageCurrent(pathname, "/about-us")}>
+                      About Us
+                    </a>
+                    <a href="/contact" aria-current={pageCurrent(pathname, "/contact")}>
+                      Contact
+                    </a>
+                    <a href="/login" aria-current={pageCurrent(pathname, "/login")}>
+                      Login
+                    </a>
+                  </div>
+                </nav>
+              </div>
             </>,
             document.body,
           )

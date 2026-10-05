@@ -90,6 +90,24 @@ function useHoverNav() {
   return hoverNav;
 }
 
+/** Filled equilateral triangle caret for the Products trigger. */
+export function ProductsNavCaret() {
+  return (
+    <span className="products-nav-caret" aria-hidden="true">
+      <svg
+        className="products-nav-caret-icon"
+        width="8"
+        height="7"
+        viewBox="0 0 10 9"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <polygon points="0,0 10,0 5,8.66" fill="currentColor" />
+      </svg>
+    </span>
+  );
+}
+
 function isMegaItemActive(
   item: ProductNavMegaItem,
   onProductsPage: boolean,
@@ -244,9 +262,7 @@ export function ProductsNavMenu({
         onFocus={hoverNav ? onTriggerFocus : undefined}
       >
         <span className="products-nav-trigger-label">Products</span>
-        <span className="products-nav-caret" aria-hidden="true">
-          ▾
-        </span>
+        <ProductsNavCaret />
       </button>
 
       {hoverNav ? (
