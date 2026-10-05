@@ -109,7 +109,7 @@ export const PRODUCT_NAV_MEGA_ITEMS: ProductNavMegaItem[] = [
     id: "bouquet",
     label: "Bouquets",
     overlayTitle: PRODUCT_CATEGORY_OVERLAY_TITLES.bouquet,
-    imageSrc: "/images/products/bouquet/bouquet-mega-menu-marble-v2.png",
+    imageSrc: "/images/products/bouquet/bouquets-mega-menu.png",
   },
   {
     kind: "format",

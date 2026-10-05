@@ -77,6 +77,10 @@ export function HomeProductsCarousel({ cards }: HomeProductsCarouselProps) {
   const activeIndexRef = useRef(0);
   const loopingRef = useRef(false);
   const jumpingRef = useRef(false);
+  const dragMovedRef = useRef(false);
+  const pointerActiveRef = useRef(false);
+  const pointerStartXRef = useRef(0);
+  const pointerStartScrollRef = useRef(0);
   const [activeIndex, setActiveIndex] = useState(0);
   const [looping, setLooping] = useState(false);
   const cardCount = cards.length;
@@ -289,6 +293,35 @@ export function HomeProductsCarousel({ cards }: HomeProductsCarouselProps) {
     event.stopPropagation();
   };
 
+  const onScrollerPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    // Ignore non-primary buttons and controls that should not start a drag.
+    if (event.button !== 0) return;
+    pointerActiveRef.current = true;
+    dragMovedRef.current = false;
+    pointerStartXRef.current = event.clientX;
+    pointerStartScrollRef.current = scrollerRef.current?.scrollLeft ?? 0;
+  };
+
+  const onScrollerPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!pointerActiveRef.current) return;
+    const deltaX = Math.abs(event.clientX - pointerStartXRef.current);
+    const deltaScroll = Math.abs((scrollerRef.current?.scrollLeft ?? 0) - pointerStartScrollRef.current);
+    if (deltaX > 8 || deltaScroll > 8) {
+      dragMovedRef.current = true;
+    }
+  };
+
+  const onScrollerPointerUp = () => {
+    pointerActiveRef.current = false;
+  };
+
+  const onScrollerClickCapture = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (!dragMovedRef.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    dragMovedRef.current = false;
+  };
+
   const sets = looping ? [0, 1, 2] : [0];
 
   return (
@@ -318,6 +351,11 @@ export function HomeProductsCarousel({ cards }: HomeProductsCarouselProps) {
           className={`home-products-grid${looping ? " home-products-grid--loop" : ""}`}
           id="products"
           ref={scrollerRef}
+          onPointerDown={onScrollerPointerDown}
+          onPointerMove={onScrollerPointerMove}
+          onPointerUp={onScrollerPointerUp}
+          onPointerCancel={onScrollerPointerUp}
+          onClickCapture={onScrollerClickCapture}
         >
           {sets.map((setIndex) =>
             cards.map((card, logicalIndex) => (

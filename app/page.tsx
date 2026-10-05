@@ -54,6 +54,7 @@ const homeStoryCards = [
     lead: "Care between the farm and the destination.",
     body: "After harvest, the orchids are selected, prepared, and packed for their journey. Each step matters: protecting the blooms, preserving their beauty, and helping them arrive ready for the hands that will create with them.",
     imageSrc: "/images/story/packing-house.png",
+    href: "/packing-house",
   },
   {
     id: "03",
@@ -61,6 +62,7 @@ const homeStoryCards = [
     lead: "Rooted in the people behind the flowers.",
     body: "We work closely with our Thai grower network to select orchids that meet export quality standards. Careful harvesting, handling, and packing help each fresh-cut stem arrive in beautiful condition, ready for floral work.",
     imageSrc: "/images/story/growers.png",
+    href: "/our-growers",
   },
 ];
 

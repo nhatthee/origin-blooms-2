@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Image from "next/image";
+import { PackingHouseSlideshow } from "../../components/PackingHouseSlideshow";
 import { SiteChrome } from "../../components/SiteChrome";
 import { SiteFooter } from "../../components/SiteFooter";
 
@@ -8,6 +8,21 @@ export const metadata: Metadata = {
   description:
     "Origin Blooms imports fresh-cut Dendrobium orchids from Thailand and distributes them across the United States for florists, event designers, and wholesale buyers.",
 };
+
+const ABOUT_STORY_IMAGES = [
+  {
+    src: "/images/about/about-1.png",
+    alt: "Fresh-cut Dendrobium orchids being prepared for export in Thailand",
+  },
+  {
+    src: "/images/about/about-2.png",
+    alt: "Thai orchid packing and preparation for floral work",
+  },
+  {
+    src: "/images/about/about-3.png",
+    alt: "Orchids prepared and packed at the packing house",
+  },
+];
 
 export default function OurStoryPage() {
   return (
@@ -46,15 +61,8 @@ export default function OurStoryPage() {
                 </p>
               </div>
             </div>
-            <div className="about-story-visual photo-slot">
-              <Image
-                src="/images/about/orchid-packing-thailand.png"
-                alt="Fresh-cut Dendrobium orchids being prepared for export in Thailand"
-                fill
-                sizes="(max-width: 760px) 100vw, (max-width: 1100px) 45vw, min(520px, 42vw)"
-                style={{ objectFit: "cover", objectPosition: "center" }}
-                priority
-              />
+            <div className="about-story-visual about-slideshow-visual">
+              <PackingHouseSlideshow images={ABOUT_STORY_IMAGES} />
             </div>
           </div>
         </section>

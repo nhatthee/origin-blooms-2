@@ -141,7 +141,7 @@ function ProductCatalogView({
   } as const;
   const desktopHeroByFormat = {
     bouquet: {
-      src: "/images/products/bouquet/bouquet-hero-marble-v2.png",
+      src: "/images/products/bouquet/bouquets-hero.png",
       alt: "Orchid Bouquets",
       width: 1983,
       height: 793,
