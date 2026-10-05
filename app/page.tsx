@@ -42,7 +42,7 @@ const featuredOrchids = FEATURED_ORCHIDS.flatMap(({ slug, label }) => {
 const homeStoryCards = [
   {
     id: "01",
-    title: "Our Vision",
+    title: "ABOUT US",
     lead: "Beauty begins at the source.",
     body: "We believe a flower’s story matters as much as the moment it creates. From Thai farms to floral professionals across the United States, we give every Dendrobium orchid a new place to inspire.",
     imageSrc: "/images/story/our-vision.png",
@@ -50,7 +50,7 @@ const homeStoryCards = [
   },
   {
     id: "02",
-    title: "Packing House",
+    title: "PACKING HOUSE",
     lead: "Care between the farm and the destination.",
     body: "After harvest, the orchids are selected, prepared, and packed for their journey. Each step matters: protecting the blooms, preserving their beauty, and helping them arrive ready for the hands that will create with them.",
     imageSrc: "/images/story/packing-house.png",
@@ -58,7 +58,7 @@ const homeStoryCards = [
   },
   {
     id: "03",
-    title: "Our Growers",
+    title: "OUR GROWERS",
     lead: "Rooted in the people behind the flowers.",
     body: "We work closely with our Thai grower network to select orchids that meet export quality standards. Careful harvesting, handling, and packing help each fresh-cut stem arrive in beautiful condition, ready for floral work.",
     imageSrc: "/images/story/growers.png",

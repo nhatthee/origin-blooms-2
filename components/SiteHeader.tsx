@@ -209,7 +209,7 @@ export function SiteHeader({ homePage = false }: SiteHeaderProps) {
       panel.style.visibility = "hidden";
       panel.style.pointerEvents = "none";
       panel.style.transition = "none";
-      panel.style.transform = "translate3d(0, -100%, 0)";
+      panel.style.transform = "translate3d(0, 100%, 0)";
       void panel.offsetHeight;
     }
     setShowCloseIcon(false);
@@ -341,6 +341,10 @@ export function SiteHeader({ homePage = false }: SiteHeaderProps) {
 
   const closeMenu = () => requestClose();
 
+  const closeMobileNavForNavigation = () => {
+    window.dispatchEvent(new Event(CLOSE_MOBILE_NAV_EVENT));
+  };
+
   return (
     <header className="site-header" id={homePage ? "top" : undefined}>
       <div className="site-header-top" ref={logoRowRef}>
@@ -387,11 +391,12 @@ export function SiteHeader({ homePage = false }: SiteHeaderProps) {
         </div>
         <div className="mobile-header-actions">
           <a
-            className="mobile-join"
+            className="header-icon-link"
             href="/login"
+            aria-label="Log in"
             aria-current={pageCurrent(pathname, "/login")}
           >
-            Join
+            <LoginPersonIcon />
           </a>
           <button
             type="button"
@@ -450,19 +455,36 @@ export function SiteHeader({ homePage = false }: SiteHeaderProps) {
                   onTransitionEnd={onPanelTransitionEnd}
                 >
                   <div className="mobile-menu-panel-inner">
-                    <a href="/" aria-current={pageCurrent(pathname, "/")}>
+                    <a
+                      href="/"
+                      aria-current={pageCurrent(pathname, "/")}
+                      onClick={closeMobileNavForNavigation}
+                    >
                       Home
                     </a>
                     <Suspense fallback={<ProductsNavFallback ariaCurrent={productsCurrent} />}>
                       <ProductsNavMenu aria-current={productsCurrent} />
                     </Suspense>
-                    <a href="/about-us" aria-current={pageCurrent(pathname, "/about-us")}>
-                      About Us
+                    <a
+                      href="/inquiry"
+                      className="inquiry-nav-link"
+                      aria-current={inquiryCurrent}
+                      onClick={closeMobileNavForNavigation}
+                    >
+                      {inquiryLabel}
                     </a>
-                    <a href="/contact" aria-current={pageCurrent(pathname, "/contact")}>
+                    <a
+                      href="/contact"
+                      aria-current={pageCurrent(pathname, "/contact")}
+                      onClick={closeMobileNavForNavigation}
+                    >
                       Contact
                     </a>
-                    <a href="/login" aria-current={pageCurrent(pathname, "/login")}>
+                    <a
+                      href="/login"
+                      aria-current={pageCurrent(pathname, "/login")}
+                      onClick={closeMobileNavForNavigation}
+                    >
                       Login
                     </a>
                   </div>
