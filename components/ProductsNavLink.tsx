@@ -28,6 +28,8 @@ import { useLocationSearch } from "./useLocationSearch";
 type ProductsNavMenuProps = {
   className?: string;
   "aria-current"?: "page";
+  /** Always render the desktop mega menu (avoids mobile-accordion FOUC in `.desktop-nav`). */
+  desktopMega?: boolean;
 };
 
 const HOVER_NAV_MQ = "(hover: hover) and (pointer: fine) and (min-width: 761px)";
@@ -178,6 +180,7 @@ function isMegaItemActive(
 export function ProductsNavMenu({
   className,
   "aria-current": ariaCurrent,
+  desktopMega = false,
 }: ProductsNavMenuProps) {
   const pathname = usePathname() || "/";
   const searchParams = useLocationSearch();
@@ -187,6 +190,8 @@ export function ProductsNavMenu({
   const dropdownMenuId = useId();
   const megaMenuId = useId();
   const hoverNav = useHoverNav();
+  /** Desktop nav must SSR mega; hoverNav alone starts false and flashes the accordion. */
+  const showMega = desktopMega || hoverNav;
   const hoverCloseTimerRef = useRef<number | null>(null);
   /** After a mega/dropdown choice, ignore hover-open until the pointer leaves the nav. */
   const suppressHoverOpenRef = useRef(false);
@@ -238,7 +243,7 @@ export function ProductsNavMenu({
   }, [open]);
 
   useEffect(() => {
-    if (!open || hoverNav) {
+    if (!open || showMega) {
       clearPrimaryProductsDropdownHeight();
       return;
     }
@@ -264,7 +269,7 @@ export function ProductsNavMenu({
       clearPrimaryProductsDropdownHeight();
       if (locked) unlockBodyScrollForProductsDropdown(scrollY);
     };
-  }, [open, hoverNav]);
+  }, [open, showMega]);
 
   useEffect(() => {
     setOpen(false);
@@ -322,7 +327,7 @@ export function ProductsNavMenu({
   const navClassName = [
     "products-nav",
     open ? "is-open" : "",
-    hoverNav ? "products-nav--desktop-mega" : "",
+    showMega ? "products-nav--desktop-mega" : "",
     className ?? "",
   ]
     .filter(Boolean)
@@ -340,7 +345,7 @@ export function ProductsNavMenu({
         type="button"
         className="products-nav-trigger"
         aria-expanded={open}
-        aria-controls={hoverNav ? megaMenuId : dropdownMenuId}
+        aria-controls={showMega ? megaMenuId : dropdownMenuId}
         aria-haspopup="menu"
         aria-current={ariaCurrent}
         onClick={onTriggerClick}
@@ -350,7 +355,7 @@ export function ProductsNavMenu({
         <ProductsNavCaret />
       </button>
 
-      {hoverNav ? (
+      {showMega ? (
         <div
           className="products-nav-mega"
           id={megaMenuId}

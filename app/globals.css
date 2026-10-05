@@ -30,6 +30,8 @@ h1,h2,h3,p{margin-top:0}
 .desktop-nav a:hover:not([aria-current=page]),.desktop-nav .products-nav-trigger:hover:not([aria-current=page]),.text-link:hover{color:var(--orchid)}
 .desktop-nav a[aria-current=page],.desktop-nav .products-nav-trigger[aria-current=page]{color:#8A5AA6}
 .products-nav{position:relative;display:inline-flex;flex-direction:column;align-items:center}
+/* Never paint the mobile accordion inside desktop nav (SSR/hydration FOUC of Loose Blooms). */
+.desktop-nav .mobile-products-accordion{display:none!important;visibility:hidden;pointer-events:none}
 .products-nav-trigger{display:inline-flex;align-items:center;justify-content:center;gap:6px;color:inherit}
 .products-nav-caret{display:inline-flex;align-items:center;justify-content:center;width:8px;height:7px;flex-shrink:0;line-height:0;transform-origin:center center;transition:transform .18s ease}
 .products-nav-caret-icon{display:block;width:8px;height:7px}

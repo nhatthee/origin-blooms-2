@@ -365,7 +365,7 @@ export function SiteHeader({ homePage = false }: SiteHeaderProps) {
               Home
             </a>
             <Suspense fallback={<ProductsNavFallback ariaCurrent={productsCurrent} />}>
-              <ProductsNavMenu aria-current={productsCurrent} />
+              <ProductsNavMenu aria-current={productsCurrent} desktopMega />
             </Suspense>
             <a
               href="/inquiry"
