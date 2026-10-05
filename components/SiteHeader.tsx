@@ -451,7 +451,6 @@ export function SiteHeader({ homePage = false }: SiteHeaderProps) {
                   data-phase={phase}
                   aria-label="Mobile navigation"
                   aria-hidden={!menuExpanded}
-                  inert={phase === "closing" ? true : undefined}
                   onTransitionEnd={onPanelTransitionEnd}
                 >
                   <div className="mobile-menu-panel-inner">

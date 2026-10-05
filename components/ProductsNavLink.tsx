@@ -32,6 +32,7 @@ type ProductsNavMenuProps = {
 
 const HOVER_NAV_MQ = "(hover: hover) and (pointer: fine) and (min-width: 761px)";
 const HOVER_CLOSE_DELAY_MS = 140;
+const PRODUCTS_DROPDOWN_HEIGHT_VAR = "--products-dropdown-height";
 export const CLOSE_MOBILE_NAV_EVENT = "originblooms:close-mobile-nav";
 export const SHOW_SITE_CHROME_EVENT = "originblooms:show-site-chrome";
 
@@ -46,6 +47,61 @@ function stickyChromeOffset() {
     return Math.round(rect.bottom);
   }
   return 0;
+}
+
+function isPrimaryMobileProductsNav(root: HTMLElement | null) {
+  return Boolean(root?.closest(".mobile-primary-nav"));
+}
+
+/** Fill from primary-nav bottom to the live visual viewport (Safari toolbar aware). */
+function syncPrimaryProductsDropdownHeight(root: HTMLElement | null) {
+  if (!isPrimaryMobileProductsNav(root)) return;
+  const primaryNav = root?.closest(".mobile-primary-nav") as HTMLElement | null;
+  if (!primaryNav) return;
+
+  const top = Math.round(primaryNav.getBoundingClientRect().bottom);
+  const vv = window.visualViewport;
+  const viewportBottom = vv
+    ? Math.round(vv.height + vv.offsetTop)
+    : window.innerHeight;
+  const height = Math.max(0, viewportBottom - top);
+  document.documentElement.style.setProperty(
+    PRODUCTS_DROPDOWN_HEIGHT_VAR,
+    `${height}px`,
+  );
+}
+
+function clearPrimaryProductsDropdownHeight() {
+  document.documentElement.style.removeProperty(PRODUCTS_DROPDOWN_HEIGHT_VAR);
+}
+
+function lockBodyScrollForProductsDropdown(scrollY: number) {
+  // Hamburger already owns the lock — don't nest or fight it.
+  if (document.documentElement.classList.contains("mobile-nav-open")) return false;
+  const { body, documentElement } = document;
+  documentElement.classList.add("products-dropdown-open");
+  body.style.position = "fixed";
+  body.style.top = `-${scrollY}px`;
+  body.style.left = "0";
+  body.style.right = "0";
+  body.style.width = "100%";
+  body.style.overflow = "hidden";
+  return true;
+}
+
+function unlockBodyScrollForProductsDropdown(scrollY: number) {
+  const { body, documentElement } = document;
+  if (!documentElement.classList.contains("products-dropdown-open")) return;
+  documentElement.classList.remove("products-dropdown-open");
+  // Hamburger may have taken over while we were open.
+  if (documentElement.classList.contains("mobile-nav-open")) return;
+  body.style.position = "";
+  body.style.top = "";
+  body.style.left = "";
+  body.style.right = "";
+  body.style.width = "";
+  body.style.overflow = "";
+  window.scrollTo(0, scrollY);
 }
 
 /** Used only for legacy `/products#product-catalog` deep links. */
@@ -180,6 +236,35 @@ export function ProductsNavMenu({
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [open]);
+
+  useEffect(() => {
+    if (!open || hoverNav) {
+      clearPrimaryProductsDropdownHeight();
+      return;
+    }
+    if (!isPrimaryMobileProductsNav(rootRef.current)) return;
+
+    const sync = () => syncPrimaryProductsDropdownHeight(rootRef.current);
+    sync();
+
+    const scrollY = Math.max(0, window.scrollY);
+    const locked = lockBodyScrollForProductsDropdown(scrollY);
+
+    window.addEventListener("resize", sync);
+    window.addEventListener("orientationchange", sync);
+    const vv = window.visualViewport;
+    vv?.addEventListener("resize", sync);
+    vv?.addEventListener("scroll", sync);
+
+    return () => {
+      window.removeEventListener("resize", sync);
+      window.removeEventListener("orientationchange", sync);
+      vv?.removeEventListener("resize", sync);
+      vv?.removeEventListener("scroll", sync);
+      clearPrimaryProductsDropdownHeight();
+      if (locked) unlockBodyScrollForProductsDropdown(scrollY);
+    };
+  }, [open, hoverNav]);
 
   useEffect(() => {
     setOpen(false);

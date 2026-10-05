@@ -80,7 +80,6 @@ export function HomeProductsCarousel({ cards }: HomeProductsCarouselProps) {
   const dragMovedRef = useRef(false);
   const pointerActiveRef = useRef(false);
   const pointerStartXRef = useRef(0);
-  const pointerStartScrollRef = useRef(0);
   const [activeIndex, setActiveIndex] = useState(0);
   const [looping, setLooping] = useState(false);
   const cardCount = cards.length;
@@ -299,14 +298,14 @@ export function HomeProductsCarousel({ cards }: HomeProductsCarouselProps) {
     pointerActiveRef.current = true;
     dragMovedRef.current = false;
     pointerStartXRef.current = event.clientX;
-    pointerStartScrollRef.current = scrollerRef.current?.scrollLeft ?? 0;
   };
 
   const onScrollerPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!pointerActiveRef.current) return;
+    // Only finger travel counts as a drag. Native scroll-snap can change
+    // scrollLeft on a plain tap; treating that as a drag ate the first click.
     const deltaX = Math.abs(event.clientX - pointerStartXRef.current);
-    const deltaScroll = Math.abs((scrollerRef.current?.scrollLeft ?? 0) - pointerStartScrollRef.current);
-    if (deltaX > 8 || deltaScroll > 8) {
+    if (deltaX > 10) {
       dragMovedRef.current = true;
     }
   };
