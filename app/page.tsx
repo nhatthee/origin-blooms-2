@@ -73,15 +73,31 @@ export default function Home() {
       <SiteChrome homePage />
 
       <main>
-        <section className="hero-truck" aria-label="Origin Blooms">
+        <section className="hero-truck" aria-labelledby="hero-headline">
           <Image
-            src="/images/hero/origin-blooms-van.png"
-            alt="Concept image of an Origin Blooms branded orchid delivery van"
+            src="/images/hero/orchids.png"
+            alt="Fresh Thai cut orchids"
             fill
-            sizes="100vw"
+            sizes="(max-width: 760px) and (orientation: portrait) 0px, 100vw"
             priority
-            className="hero-truck-image"
+            className="hero-truck-image hero-truck-image--desktop"
           />
+          <Image
+            src="/images/hero/orchids-mobile.png"
+            alt=""
+            fill
+            sizes="(max-width: 760px) and (orientation: portrait) 100vw, 0px"
+            priority
+            className="hero-truck-image hero-truck-image--mobile"
+            aria-hidden="true"
+          />
+          <div className="hero-truck-copy">
+            <p className="hero-truck-brand">ORIGIN BLOOMS</p>
+            <h1 id="hero-headline" className="hero-truck-headline">
+              BEYOND THE BLOOM
+            </h1>
+            <p className="hero-truck-tagline">UNCOMPROMISING CURATION</p>
+          </div>
         </section>
 
         <div className="value-strip" aria-label="Our focus">
