@@ -8,7 +8,6 @@ import {
   useLayoutEffect,
   useRef,
   useState,
-  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
 
@@ -26,14 +25,17 @@ type HomeProductsCarouselProps = {
   cards: HomeStoryCard[];
 };
 
-const MOBILE_MQ = "(max-width: 760px)";
+const MOBILE_MQ =
+  "(max-width: 760px), (max-height: 500px) and (orientation: landscape)";
+const TRANSITION_MS = 900;
+const SWIPE_THRESHOLD_PX = 40;
 
-function ChevronPrevIcon() {
+function PackingChevronPrevIcon() {
   return (
     <svg
-      className="home-products-chevron-icon"
-      width="28"
-      height="28"
+      className="packing-slideshow-chevron-icon"
+      width="20"
+      height="20"
       viewBox="0 0 24 24"
       fill="none"
       aria-hidden="true"
@@ -42,7 +44,7 @@ function ChevronPrevIcon() {
       <path
         d="M15 5L8 12L15 19"
         stroke="currentColor"
-        strokeWidth={2.75}
+        strokeWidth={2.5}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -50,12 +52,12 @@ function ChevronPrevIcon() {
   );
 }
 
-function ChevronNextIcon() {
+function PackingChevronNextIcon() {
   return (
     <svg
-      className="home-products-chevron-icon"
-      width="28"
-      height="28"
+      className="packing-slideshow-chevron-icon"
+      width="20"
+      height="20"
       viewBox="0 0 24 24"
       fill="none"
       aria-hidden="true"
@@ -64,7 +66,7 @@ function ChevronNextIcon() {
       <path
         d="M9 5L16 12L9 19"
         stroke="currentColor"
-        strokeWidth={2.75}
+        strokeWidth={2.5}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -72,357 +74,336 @@ function ChevronNextIcon() {
   );
 }
 
-export function HomeProductsCarousel({ cards }: HomeProductsCarouselProps) {
-  const scrollerRef = useRef<HTMLDivElement>(null);
-  const activeIndexRef = useRef(0);
-  const loopingRef = useRef(false);
-  const jumpingRef = useRef(false);
-  const dragMovedRef = useRef(false);
-  const pointerActiveRef = useRef(false);
-  const pointerStartXRef = useRef(0);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [looping, setLooping] = useState(false);
-  const cardCount = cards.length;
+type PendingMove = {
+  from: number;
+  to: number;
+  direction: -1 | 1;
+};
 
-  const getCards = useCallback(() => {
-    const scroller = scrollerRef.current;
-    if (!scroller) return [] as HTMLElement[];
-    return Array.from(scroller.querySelectorAll<HTMLElement>(":scope > .product-card"));
+function StoryCardArticle({ card }: { card: HomeStoryCard }) {
+  return (
+    <article className="product-card product-card--panel">
+      {card.href ? (
+        <Link
+          href={card.href}
+          className="product-photo photo-slot has-photo"
+          aria-label={card.title}
+        >
+          <Image
+            src={card.imageSrc}
+            alt=""
+            fill
+            sizes="(max-width: 760px) 100vw, 32vw"
+            className={`product-photo-media product-photo-media--${card.id}`}
+            draggable={false}
+          />
+        </Link>
+      ) : (
+        <div className="product-photo photo-slot has-photo">
+          <Image
+            src={card.imageSrc}
+            alt={card.title}
+            fill
+            sizes="(max-width: 760px) 100vw, 32vw"
+            className={`product-photo-media product-photo-media--${card.id}`}
+            draggable={false}
+          />
+        </div>
+      )}
+      <div className="product-info">
+        <div className="product-copy">
+          <div className="product-title-row">
+            <h3>
+              {card.href ? <Link href={card.href}>{card.title}</Link> : card.title}
+            </h3>
+          </div>
+          <p className="product-lead">
+            <em>{card.lead}</em>
+          </p>
+          <p className="product-body">{card.body}</p>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+/** Desktop / tablet: unchanged 3-column grid (controls hidden via base CSS). */
+function HomeProductsDesktopGrid({ cards }: { cards: HomeStoryCard[] }) {
+  return (
+    <div className="home-products-scroller">
+      <div className="home-products-stage">
+        <div className="home-products-grid" id="products">
+          {cards.map((card) => (
+            <StoryCardArticle key={card.id} card={card} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Mobile: PackingHouseSlideshow motion + chrome over Home story cards. */
+function HomeProductsMobileSlideshow({ cards }: { cards: HomeStoryCard[] }) {
+  const count = cards.length;
+  const [index, setIndex] = useState(0);
+  const [pending, setPending] = useState<PendingMove | null>(null);
+  const [sliding, setSliding] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
+
+  const pointerIdRef = useRef<number | null>(null);
+  const startXRef = useRef(0);
+  const swipingRef = useRef(false);
+  const indexRef = useRef(0);
+  const animatingRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dragMovedRef = useRef(false);
+
+  useEffect(() => {
+    indexRef.current = index;
+  }, [index]);
+
+  const clearAnimTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
   }, []);
 
-  const updateActive = useCallback((index: number) => {
-    const next = ((index % cardCount) + cardCount) % cardCount;
-    activeIndexRef.current = next;
-    setActiveIndex((prev) => (prev === next ? prev : next));
-  }, [cardCount]);
+  const finishMove = useCallback(
+    (to: number) => {
+      setIndex(to);
+      indexRef.current = to;
+      setPending(null);
+      setSliding(false);
+      animatingRef.current = false;
+      clearAnimTimer();
+    },
+    [clearAnimTimer],
+  );
 
-  const nearestAbsIndex = useCallback(() => {
-    const scroller = scrollerRef.current;
-    const cards = getCards();
-    if (!scroller || cards.length === 0) return 0;
+  const animateTo = useCallback(
+    (to: number, direction: -1 | 1) => {
+      if (count <= 1 || animatingRef.current) return;
+      const from = indexRef.current;
+      if (to === from) return;
 
-    const origin = scroller.getBoundingClientRect().left;
-    let best = 0;
-    let bestDist = Number.POSITIVE_INFINITY;
-    cards.forEach((card, index) => {
-      const dist = Math.abs(card.getBoundingClientRect().left - origin);
-      if (dist < bestDist) {
-        bestDist = dist;
-        best = index;
+      if (reduceMotion) {
+        setIndex(to);
+        indexRef.current = to;
+        return;
       }
-    });
-    return best;
-  }, [getCards]);
 
-  const instantScrollToAbs = useCallback(
-    (absIndex: number) => {
-      const scroller = scrollerRef.current;
-      const cards = getCards();
-      const card = cards[absIndex];
-      if (!scroller || !card) return;
+      animatingRef.current = true;
+      setPending({ from, to, direction });
+      setSliding(false);
 
-      jumpingRef.current = true;
-      const prevSnap = scroller.style.scrollSnapType;
-      scroller.style.scrollSnapType = "none";
-      const scrollerRect = scroller.getBoundingClientRect();
-      const cardRect = card.getBoundingClientRect();
-      scroller.scrollLeft += cardRect.left - scrollerRect.left;
-      void scroller.offsetWidth;
-      scroller.style.scrollSnapType = prevSnap;
       requestAnimationFrame(() => {
-        jumpingRef.current = false;
+        requestAnimationFrame(() => {
+          setSliding(true);
+        });
       });
+
+      clearAnimTimer();
+      timerRef.current = setTimeout(() => {
+        finishMove(to);
+      }, TRANSITION_MS);
     },
-    [getCards],
+    [clearAnimTimer, count, finishMove, reduceMotion],
   );
 
-  const normalizeLoop = useCallback(() => {
-    if (!loopingRef.current || jumpingRef.current || cardCount <= 0) return;
-    const abs = nearestAbsIndex();
-    if (abs < cardCount) {
-      instantScrollToAbs(abs + cardCount);
-    } else if (abs >= cardCount * 2) {
-      instantScrollToAbs(abs - cardCount);
-    }
-    updateActive(nearestAbsIndex() % cardCount);
-  }, [cardCount, instantScrollToAbs, nearestAbsIndex, updateActive]);
-
-  const syncActiveFromScroll = useCallback(() => {
-    if (jumpingRef.current) return;
-    const abs = nearestAbsIndex();
-    if (loopingRef.current && cardCount > 0) {
-      updateActive(abs % cardCount);
-    } else {
-      updateActive(abs);
-    }
-  }, [cardCount, nearestAbsIndex, updateActive]);
-
-  const scrollToAbs = useCallback(
-    (absIndex: number, behavior: ScrollBehavior = "smooth") => {
-      const scroller = scrollerRef.current;
-      const cards = getCards();
-      const card = cards[absIndex];
-      if (!scroller || !card) return;
-
-      const scrollerRect = scroller.getBoundingClientRect();
-      const cardRect = card.getBoundingClientRect();
-      const nextLeft = scroller.scrollLeft + (cardRect.left - scrollerRect.left);
-      scroller.scrollTo({ left: Math.max(0, nextLeft), behavior });
-      if (loopingRef.current && cardCount > 0) {
-        updateActive(absIndex % cardCount);
-      } else {
-        updateActive(absIndex);
-      }
-    },
-    [cardCount, getCards, updateActive],
-  );
-
-  const goToLogical = useCallback(
-    (logical: number, behavior: ScrollBehavior = "smooth") => {
-      if (cardCount <= 0) return;
-      const targetLogical = ((logical % cardCount) + cardCount) % cardCount;
-
-      if (!loopingRef.current) {
-        scrollToAbs(targetLogical, behavior);
-        return;
-      }
-
-      const currentAbs = nearestAbsIndex();
-      const currentLogical = ((currentAbs % cardCount) + cardCount) % cardCount;
-      let delta = targetLogical - currentLogical;
-      if (delta > cardCount / 2) delta -= cardCount;
-      if (delta < -cardCount / 2) delta += cardCount;
-      scrollToAbs(currentAbs + delta, behavior);
-    },
-    [cardCount, nearestAbsIndex, scrollToAbs],
-  );
-
-  const stepBy = useCallback(
+  const goBy = useCallback(
     (direction: -1 | 1) => {
-      if (cardCount <= 0) return;
-      if (!loopingRef.current) {
-        goToLogical(activeIndexRef.current + direction);
-        return;
-      }
-      scrollToAbs(nearestAbsIndex() + direction);
+      if (count <= 1) return;
+      const from = indexRef.current;
+      const to = (((from + direction) % count) + count) % count;
+      animateTo(to, direction);
     },
-    [cardCount, goToLogical, nearestAbsIndex, scrollToAbs],
+    [animateTo, count],
   );
 
-  useLayoutEffect(() => {
-    const mq = window.matchMedia(MOBILE_MQ);
-    const apply = () => {
-      const next = mq.matches;
-      loopingRef.current = next;
-      setLooping(next);
-    };
+  const goTo = useCallback(
+    (target: number) => {
+      if (count <= 1 || animatingRef.current) return;
+      const next = ((target % count) + count) % count;
+      const from = indexRef.current;
+      if (next === from) return;
+
+      let delta = next - from;
+      if (Math.abs(delta) > count / 2) {
+        delta = delta > 0 ? delta - count : delta + count;
+      }
+      animateTo(next, delta < 0 ? -1 : 1);
+    },
+    [animateTo, count],
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const apply = () => setReduceMotion(mq.matches);
     apply();
     mq.addEventListener("change", apply);
     return () => mq.removeEventListener("change", apply);
   }, []);
 
-  useLayoutEffect(() => {
-    if (!looping || cardCount <= 0) return;
-    // Land in the middle copy so both directions have room to loop.
-    instantScrollToAbs(cardCount + activeIndexRef.current);
-    updateActive(activeIndexRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-seat when loop mode / count changes
-  }, [looping, cardCount]);
+  useEffect(() => () => clearAnimTimer(), [clearAnimTimer]);
 
-  useEffect(() => {
-    const scroller = scrollerRef.current;
-    if (!scroller) return;
-
-    const onScroll = () => syncActiveFromScroll();
-    const onScrollEnd = () => {
-      syncActiveFromScroll();
-      normalizeLoop();
-    };
-
-    scroller.addEventListener("scroll", onScroll, { passive: true });
-    scroller.addEventListener("scrollend", onScrollEnd);
-
-    // Fallback when scrollend is unavailable: settle after scroll stops.
-    let settleTimer: ReturnType<typeof setTimeout> | null = null;
-    const onScrollSettle = () => {
-      if (settleTimer) clearTimeout(settleTimer);
-      settleTimer = setTimeout(() => {
-        normalizeLoop();
-        syncActiveFromScroll();
-      }, 120);
-    };
-    scroller.addEventListener("scroll", onScrollSettle, { passive: true });
-
-    const restoreLogical = () => {
-      if (!loopingRef.current || cardCount <= 0) {
-        syncActiveFromScroll();
-        return;
-      }
-      instantScrollToAbs(cardCount + activeIndexRef.current);
-      updateActive(activeIndexRef.current);
-    };
-
-    window.addEventListener("resize", restoreLogical);
-    window.addEventListener("orientationchange", restoreLogical);
-
-    return () => {
-      scroller.removeEventListener("scroll", onScroll);
-      scroller.removeEventListener("scrollend", onScrollEnd);
-      scroller.removeEventListener("scroll", onScrollSettle);
-      if (settleTimer) clearTimeout(settleTimer);
-      window.removeEventListener("resize", restoreLogical);
-      window.removeEventListener("orientationchange", restoreLogical);
-    };
-  }, [
-    cardCount,
-    instantScrollToAbs,
-    normalizeLoop,
-    syncActiveFromScroll,
-    updateActive,
-    looping,
-  ]);
-
-  const step = (direction: -1 | 1) => (event: ReactMouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    stepBy(direction);
-  };
-
-  const onNavPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-  };
-
-  const onScrollerPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    // Ignore non-primary buttons and controls that should not start a drag.
-    if (event.button !== 0) return;
-    pointerActiveRef.current = true;
+  const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || count <= 1 || animatingRef.current) return;
+    if ((event.target as HTMLElement | null)?.closest?.("button, a")) return;
+    pointerIdRef.current = event.pointerId;
+    startXRef.current = event.clientX;
+    swipingRef.current = false;
     dragMovedRef.current = false;
-    pointerStartXRef.current = event.clientX;
+    event.currentTarget.setPointerCapture(event.pointerId);
   };
 
-  const onScrollerPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!pointerActiveRef.current) return;
-    // Only finger travel counts as a drag. Native scroll-snap can change
-    // scrollLeft on a plain tap; treating that as a drag ate the first click.
-    const deltaX = Math.abs(event.clientX - pointerStartXRef.current);
-    if (deltaX > 10) {
+  const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (pointerIdRef.current !== event.pointerId) return;
+    if (Math.abs(event.clientX - startXRef.current) > 8) {
+      swipingRef.current = true;
       dragMovedRef.current = true;
     }
   };
 
-  const onScrollerPointerUp = () => {
-    pointerActiveRef.current = false;
+  const endPointer = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (pointerIdRef.current !== event.pointerId) return;
+    const delta = event.clientX - startXRef.current;
+    pointerIdRef.current = null;
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch {
+      /* already released */
+    }
+    if (swipingRef.current && Math.abs(delta) >= SWIPE_THRESHOLD_PX) {
+      goBy(delta < 0 ? 1 : -1);
+    }
+    swipingRef.current = false;
   };
 
-  const onScrollerClickCapture = (event: ReactMouseEvent<HTMLDivElement>) => {
+  const onClickCapture = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!dragMovedRef.current) return;
     event.preventDefault();
     event.stopPropagation();
     dragMovedRef.current = false;
   };
 
-  const sets = looping ? [0, 1, 2] : [0];
+  if (count === 0) return null;
+
+  const selectedIndex = pending?.to ?? index;
+  const renderIndexes = pending
+    ? Array.from(new Set([pending.from, pending.to]))
+    : [index];
+
+  const slideClass = (i: number) => {
+    if (!pending) {
+      return i === index ? " is-active" : "";
+    }
+
+    const { from, to, direction } = pending;
+    if (i === from) {
+      if (!sliding) return " is-active";
+      return direction === 1 ? " is-exit-left" : " is-exit-right";
+    }
+    if (i === to) {
+      if (!sliding) {
+        return direction === 1 ? " is-enter-right" : " is-enter-left";
+      }
+      return " is-enter-active";
+    }
+    return "";
+  };
 
   return (
-    <div className="home-products-scroller">
+    <div className="home-products-scroller home-products-scroller--mobile-slideshow">
       <div className="home-products-stage">
-        <div className="home-products-photo-nav">
-          <button
-            type="button"
-            className="home-products-chevron home-products-chevron--prev"
-            aria-label="Previous card"
-            onClick={step(-1)}
-            onPointerDown={onNavPointerDown}
-          >
-            <ChevronPrevIcon />
-          </button>
-          <button
-            type="button"
-            className="home-products-chevron home-products-chevron--next"
-            aria-label="Next card"
-            onClick={step(1)}
-            onPointerDown={onNavPointerDown}
-          >
-            <ChevronNextIcon />
-          </button>
-        </div>
         <div
-          className={`home-products-grid${looping ? " home-products-grid--loop" : ""}`}
+          className="home-products-mobile-stage"
           id="products"
-          ref={scrollerRef}
-          onPointerDown={onScrollerPointerDown}
-          onPointerMove={onScrollerPointerMove}
-          onPointerUp={onScrollerPointerUp}
-          onPointerCancel={onScrollerPointerUp}
-          onClickCapture={onScrollerClickCapture}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={endPointer}
+          onPointerCancel={endPointer}
+          onClickCapture={onClickCapture}
         >
-          {sets.map((setIndex) =>
-            cards.map((card, logicalIndex) => (
-              <article
-                className="product-card product-card--panel"
-                key={`${setIndex}-${card.id}`}
-                data-logical-index={logicalIndex}
+          {cards.map((card, i) => {
+            if (!renderIndexes.includes(i)) return null;
+            return (
+              <div
+                key={card.id}
+                className={`packing-slideshow-slide${slideClass(i)}`}
+                aria-hidden={i !== selectedIndex}
               >
-                {card.href ? (
-                  <Link
-                    href={card.href}
-                    className="product-photo photo-slot has-photo"
-                    aria-label={card.title}
-                  >
-                    <Image
-                      src={card.imageSrc}
-                      alt=""
-                      fill
-                      sizes="(max-width: 760px) 92vw, 32vw"
-                      className={`product-photo-media product-photo-media--${card.id}`}
-                    />
-                  </Link>
-                ) : (
-                  <div className="product-photo photo-slot has-photo">
-                    <Image
-                      src={card.imageSrc}
-                      alt={card.title}
-                      fill
-                      sizes="(max-width: 760px) 92vw, 32vw"
-                      className={`product-photo-media product-photo-media--${card.id}`}
-                    />
-                  </div>
-                )}
-                <div className="product-info">
-                  <div className="product-copy">
-                    <div className="product-title-row">
-                      <h3>
-                        {card.href ? (
-                          <Link href={card.href}>{card.title}</Link>
-                        ) : (
-                          card.title
-                        )}
-                      </h3>
-                    </div>
-                    <p className="product-lead">
-                      <em>{card.lead}</em>
-                    </p>
-                    <p className="product-body">{card.body}</p>
-                  </div>
-                </div>
-              </article>
-            )),
-          )}
+                <StoryCardArticle card={card} />
+              </div>
+            );
+          })}
         </div>
-      </div>
-      <div className="home-products-dots" role="tablist" aria-label="Home story cards">
-        {cards.map((card, index) => (
-          <button
-            key={card.id}
-            type="button"
-            role="tab"
-            aria-label={`Go to ${card.title}`}
-            aria-selected={index === activeIndex}
-            className={`home-products-dot${index === activeIndex ? " is-active" : ""}`}
-            onClick={() => goToLogical(index)}
-          />
-        ))}
+
+        {count > 1 ? (
+          <div className="home-products-photo-nav">
+            <div
+              className="packing-slideshow-nav"
+              role="group"
+              aria-label="Story card navigation"
+            >
+              <button
+                type="button"
+                className="packing-slideshow-chevron packing-slideshow-chevron--prev"
+                aria-label="Previous card"
+                disabled={Boolean(pending)}
+                onClick={() => goBy(-1)}
+              >
+                <PackingChevronPrevIcon />
+              </button>
+              <button
+                type="button"
+                className="packing-slideshow-chevron packing-slideshow-chevron--next"
+                aria-label="Next card"
+                disabled={Boolean(pending)}
+                onClick={() => goBy(1)}
+              >
+                <PackingChevronNextIcon />
+              </button>
+            </div>
+            <div
+              className="packing-slideshow-dots"
+              role="tablist"
+              aria-label="Home story cards"
+            >
+              {cards.map((card, i) => (
+                <button
+                  key={card.id}
+                  type="button"
+                  role="tab"
+                  aria-label={`Go to ${card.title}`}
+                  aria-selected={selectedIndex === i}
+                  className={`packing-slideshow-dot${selectedIndex === i ? " is-active" : ""}`}
+                  disabled={Boolean(pending)}
+                  onClick={() => goTo(i)}
+                />
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );
+}
+
+export function HomeProductsCarousel({ cards }: HomeProductsCarouselProps) {
+  const [mobile, setMobile] = useState(false);
+
+  useLayoutEffect(() => {
+    const mq = window.matchMedia(MOBILE_MQ);
+    const apply = () => setMobile(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
+  if (mobile) {
+    return <HomeProductsMobileSlideshow cards={cards} />;
+  }
+
+  return <HomeProductsDesktopGrid cards={cards} />;
 }
