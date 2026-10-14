@@ -1,4 +1,4 @@
-export type ProductFormat = "cut" | "bouquet" | "loose";
+export type ProductFormat = "cut" | "bouquet" | "loose" | "dried";
 
 export type ProductFamily =
   | "dendrobium"
@@ -29,6 +29,14 @@ export type ProductPacking = {
 export type ProductPackOption = {
   id: string;
   label: string;
+};
+
+/** Selectable colorway on a multi-color SKU (id is stable for inquiry keys). */
+export type ProductColorOption = {
+  id: string;
+  label: string;
+  /** CSS hex for swatch display */
+  hex: string;
 };
 
 /** Stem size / length row for Fresh Cut Orchids (only when product defines sizes). */
@@ -306,6 +314,13 @@ export type OrchidProduct = {
   order?: ProductOrderOptions;
   /** Dyed variety flag — catalog family is `dyed` when true */
   isDyed?: boolean;
+  /**
+   * Selectable colorways on a single SKU (not separate product pages).
+   * When set, the detail page shows swatch radios and inquiry lines include color.
+   */
+  colorOptions?: ProductColorOption[];
+  /** Spec rows shown under Specifications on the detail page (e.g. dried botanicals). */
+  specifications?: { label: string; value: string }[];
   /** Bouquet SKU options — informational table on product details */
   bouquetOptions?: BouquetOption[];
   /** Packing note shown above the bouquets-per-tray table */
@@ -360,6 +375,14 @@ export const PRODUCT_FORMATS: { id: ProductFormat; label: string }[] = [
   { id: "cut", label: "Fresh Cut Orchids" },
   { id: "bouquet", label: "Bouquet" },
   { id: "loose", label: "Fresh Loose Blooms" },
+  { id: "dried", label: "Dyed Decorative Branches" },
+];
+
+/** Pack sizes for Thai Dried Botanical Stems inquiry options (no display prices). */
+export const DRIED_BOTANICAL_PACK_OPTIONS: ProductPackOption[] = [
+  { id: "1kg", label: "1 kg" },
+  { id: "5kg", label: "5 kg" },
+  { id: "10kg", label: "10 kg" },
 ];
 
 export const PRODUCT_FAMILIES: { id: ProductFamily; label: string }[] = [
@@ -1348,6 +1371,84 @@ export const orchids: OrchidProduct[] = [
     description: "Individual white orchids for garnish",
     order: LOOSE_BLOOM_ORDER,
   },
+  {
+    number: null,
+    slug: "thai-dried-botanical-stems",
+    name: "Thai Dried Botanical Stems",
+    detailName: "Thai Dried Botanical Stems",
+    detailEyebrow: "Product Details",
+    descriptor: "Extra Tall · 100–160 cm · Dyed Botanical Stems",
+    tagline: "Extra Tall · 100–160 cm",
+    imageClass: "",
+    image: "/images/products/dried-botanical/dried-botanical-1.png",
+    images: [
+      {
+        src: "/images/products/dried-botanical/dried-botanical-1.png",
+        alt: "Thai Dried Botanical Stems",
+        kind: "product",
+      },
+      {
+        src: "/images/products/dried-botanical/dried-botanical-2.png",
+        alt: "Thai Dried Botanical Stems — additional photo",
+        kind: "product",
+      },
+      {
+        src: "/images/products/dried-botanical/dried-botanical-3.png",
+        alt: "Thai Dried Botanical Stems — additional photo",
+        kind: "product",
+      },
+      {
+        src: "/images/products/dried-botanical/dried-botanical-5.png",
+        alt: "Thai Dried Botanical Stems — additional photo",
+        kind: "product",
+      },
+    ],
+    category: "Dyed Decorative Branches",
+    format: "dried",
+    family: "dendrobium",
+    color: null,
+    description: [
+      "Tall, textural dried botanical stems from Thailand, individually processed and dyed for floral design, event installations, interior styling, and large-scale decorative work.",
+      "With a stem length of 100–160 cm, these lightweight stems create height, movement, and visual volume while remaining easy to arrange in bunches or larger installations.",
+      "Available in a curated range of colors for florists, event designers, hospitality spaces, retail displays, and other decorative applications.",
+    ].join("\n\n"),
+    colorOptions: [
+      { id: "royal-blue", label: "Royal Blue", hex: "#1F4BB8" },
+      { id: "sky-blue", label: "Sky Blue", hex: "#5BA8D9" },
+      { id: "lavender", label: "Lavender", hex: "#9A8BC8" },
+      { id: "purple", label: "Purple", hex: "#6B2D8B" },
+      { id: "lime-green", label: "Lime Green", hex: "#A4C93A" },
+      { id: "mint-green", label: "Mint Green", hex: "#7EC8A3" },
+      { id: "yellow", label: "Yellow", hex: "#F0D23A" },
+      { id: "golden-yellow", label: "Golden Yellow", hex: "#E5A318" },
+      { id: "orange", label: "Orange", hex: "#E86A17" },
+      { id: "red", label: "Red", hex: "#C62828" },
+      { id: "hot-pink", label: "Hot Pink", hex: "#E91E8C" },
+      { id: "light-pink", label: "Light Pink", hex: "#F5A9C5" },
+      { id: "white", label: "White", hex: "#FFFFFF" },
+      { id: "cream", label: "Cream", hex: "#F5F0E1" },
+      { id: "natural-beige", label: "Natural Beige", hex: "#C4A882" },
+      { id: "brown", label: "Brown", hex: "#6B4423" },
+    ],
+    specifications: [
+      { label: "Origin", value: "Thailand" },
+      { label: "Material", value: "Natural dried botanical stems" },
+      { label: "Stem length", value: "100–160 cm" },
+      { label: "Approx. stems per kg", value: "60–80" },
+      { label: "Finish", value: "Dyed" },
+      {
+        label: "Use",
+        value:
+          "Floral design, event installations, interior décor, retail displays, hospitality décor",
+      },
+      { label: "Format", value: "Dried decorative stems" },
+      { label: "Scientific name", value: "Sida acuta Burm.f." },
+    ],
+    order: {
+      unit: "units",
+      packOptions: DRIED_BOTANICAL_PACK_OPTIONS,
+    },
+  },
 ];
 
 export function displayProductCode(product: Pick<OrchidProduct, "number">): string {
@@ -1402,6 +1503,7 @@ export function bouquetPackingSizeEntries(
 export function normalizeProductFormat(value: string | null | undefined): ProductFormat {
   if (value === "loose") return "loose";
   if (value === "bouquet") return "bouquet";
+  if (value === "dried") return "dried";
   return "cut";
 }
 
@@ -1502,6 +1604,7 @@ export function formatLabel(format: ProductFormat): string {
 export function formatNavLabel(format: ProductFormat): string {
   if (format === "cut") return "Cut Orchids";
   if (format === "bouquet") return "Bouquets";
+  if (format === "dried") return "Dyed Decorative Branches";
   return "Loose Blooms";
 }
 

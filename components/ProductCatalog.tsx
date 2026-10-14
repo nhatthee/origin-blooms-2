@@ -63,7 +63,9 @@ function ProductCatalogView({
       ? "FRESH LOOSE BLOOMS"
       : format === "bouquet"
         ? "FRESH ORCHID'S BOUQUETS"
-        : "FRESH CUT ORCHIDS";
+        : format === "dried"
+          ? "DYED DECORATIVE BRANCHES"
+          : "FRESH CUT ORCHIDS";
 
   const categoryProducts = useMemo(() => {
     const allowed = new Set(filterOrchids(format, family).map((item) => item.slug));
@@ -152,16 +154,25 @@ function ProductCatalogView({
       width: 1983,
       height: 793,
     },
+    dried: {
+      src: "/images/products/dried-botanical/dried-botanical-hero.png",
+      alt: "Dyed Decorative Branches",
+      width: 1983,
+      height: 793,
+    },
   } as const;
   const megaItem = productNavMegaItemForCatalog(format, family);
   const overlayId = (megaItem?.id ?? null) as ProductCategoryOverlayId | null;
   const desktopHero =
     format === "cut"
       ? (desktopHeroByFamily[family] ?? null)
-      : format === "bouquet" || format === "loose"
+      : format === "bouquet" || format === "loose" || format === "dried"
         ? desktopHeroByFormat[format]
         : null;
-  const mobileHeroSrc = megaItem?.imageSrc ?? null;
+  const mobileHeroSrc =
+    format === "dried"
+      ? desktopHeroByFormat.dried.src
+      : (megaItem?.imageSrc ?? null);
   const heroTitle = overlayId
     ? productCategoryOverlayTitle(overlayId)
     : null;
@@ -171,6 +182,7 @@ function ProductCatalogView({
     (megaItem ? `${megaItem.label} orchids` : "Product category");
   const showHero = Boolean(desktopHero || mobileHeroSrc);
   const mobileOnlyHero = Boolean(mobileHeroSrc && !desktopHero);
+  const showHeroOverlay = Boolean(heroTitle && heroTone);
 
   return (
     <div className="products-page">
@@ -202,7 +214,7 @@ function ProductCatalogView({
                 priority
               />
             ) : null}
-            {heroTitle && heroTone ? (
+            {showHeroOverlay ? (
               <p
                 className={`products-banner-title products-banner-title--hero products-banner-title--${heroTone}`}
               >
@@ -301,6 +313,16 @@ function ProductCatalogView({
                               {orchid.name}
                             </a>
                           </h3>
+                          {orchid.format === "dried" ? (
+                            <>
+                              <p>{orchid.category}</p>
+                              {orchid.tagline?.trim() || orchid.descriptor?.trim() ? (
+                                <span>
+                                  {orchid.tagline?.trim() || orchid.descriptor.trim()}
+                                </span>
+                              ) : null}
+                            </>
+                          ) : null}
                         </div>
                       </div>
                     </article>

@@ -2,6 +2,7 @@ export const INTEREST_OPTIONS = [
   "Cut Orchids",
   "Loose Blooms",
   "Bouquets",
+  "Dried Decorative Branches",
   "All Products",
 ] as const;
 

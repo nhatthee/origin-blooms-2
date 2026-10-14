@@ -26,7 +26,14 @@ import {
   type ContactFormValues,
 } from "../lib/contact";
 import { PENDING_CONFIRMATION } from "../data/orchids";
-import { formatInquirySummary, groupInquiryByProduct, totalStems, totalsByUnit } from "../lib/inquiry";
+import {
+  formatInquirySummary,
+  groupInquiryByProduct,
+  inquiryColorLineLabel,
+  inquiryShowsColor,
+  totalStems,
+  totalsByUnit,
+} from "../lib/inquiry";
 import { Arrow } from "./Arrow";
 import { useInquiry } from "./InquiryProvider";
 import { SHOW_SITE_CHROME_EVENT } from "./ProductsNavLink";
@@ -358,6 +365,16 @@ function ContactFormInner() {
                             <>
                               <span>
                                 {item.sizeLabel} ({item.lengthRange})
+                              </span>
+                              <strong>
+                                {item.quantity} {item.unit}
+                              </strong>
+                            </>
+                          ) : inquiryShowsColor(item) ? (
+                            <>
+                              <span>
+                                {inquiryColorLineLabel(item)} · Bunch size:{" "}
+                                {item.optionLabel || "—"}
                               </span>
                               <strong>
                                 {item.quantity} {item.unit}

@@ -20,6 +20,7 @@ import {
   isLooseBloomProduct,
   looseBloomTotalFromPackQuantities,
   packingLines,
+  productsHref,
   stemsPerTrayRows,
   type OrchidProduct,
   type ProductFamily,
@@ -29,7 +30,13 @@ import {
   productNavMegaHref,
   productNavMegaItemForCatalog,
 } from "../data/productNavMega";
-import { parseNonNegativeIntInput, parsePositiveIntInput } from "../lib/inquiry";
+import {
+  CUSTOM_COLOR_MAX_LENGTH,
+  CUSTOM_COLOR_OPTION_ID,
+  normalizeCustomColorInput,
+  parseNonNegativeIntInput,
+  parsePositiveIntInput,
+} from "../lib/inquiry";
 import { BouquetInquiryForm } from "./BouquetInquiryForm";
 import { useInquiry } from "./InquiryProvider";
 import { RecentlyViewed } from "./RecentlyViewed";
@@ -66,6 +73,8 @@ export function ProductDetail({ product }: ProductDetailProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [packOptionId, setPackOptionId] = useState(packOptions[0]?.id ?? "");
+  const [colorOptionId, setColorOptionId] = useState("");
+  const [customColorInput, setCustomColorInput] = useState("");
   const [quantityInput, setQuantityInput] = useState("1");
   const [sizeQuantities, setSizeQuantities] = useState(() =>
     initialSizeQuantities(stemSizes.map((size) => size.id)),
@@ -74,6 +83,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
     initialSizeQuantities(packOptions.map((pack) => pack.id)),
   );
   const [quantityError, setQuantityError] = useState("");
+  const [colorError, setColorError] = useState("");
   const [addedNote, setAddedNote] = useState("");
 
   const activeImage = images[activeIndex] ?? images[0];
@@ -85,8 +95,11 @@ export function ProductDetail({ product }: ProductDetailProps) {
   );
   const taxonomyCrumbHref = taxonomyCrumb
     ? productNavMegaHref(taxonomyCrumb)
-    : "/products";
-  const taxonomyCrumbLabel = taxonomyCrumb?.label ?? "Products";
+    : product.format === "dried"
+      ? productsHref("dried")
+      : "/products";
+  const taxonomyCrumbLabel = taxonomyCrumb?.label
+    ?? (product.format === "dried" ? "Dyed Decorative Branches" : "Products");
   const detailEyebrow = product.detailEyebrow?.trim() || "Product Details";
   const detailTitle = product.detailName?.trim() || product.name;
   const bouquetOptions = product.bouquetOptions ?? [];
@@ -99,11 +112,29 @@ export function ProductDetail({ product }: ProductDetailProps) {
   const showMokaraBoxDimensions =
     product.family === "mokara-aranda" && !showBouquetDetails;
   const showDendrobiumPacking = isDendrobiumCutProduct(product) && !showBouquetDetails;
-  const showColor = Boolean(product.color?.trim()) || product.family !== "mokara-aranda";
+  const colorOptions = product.colorOptions ?? [];
+  const isThaiDriedBotanicalStems = product.slug === "thai-dried-botanical-stems";
+  const isCustomColorSelected =
+    isThaiDriedBotanicalStems && colorOptionId === CUSTOM_COLOR_OPTION_ID;
+  const specifications = (product.specifications ?? []).filter((row) => {
+    if (!isThaiDriedBotanicalStems) return true;
+    // Shown under Bunch Sizes for this SKU only — avoid duplicating on the page.
+    return row.label !== "Stem length" && row.label !== "Approx. stems per kg";
+  });
+  const isDriedProduct = product.format === "dried";
+  const showColor =
+    colorOptions.length === 0 &&
+    (Boolean(product.color?.trim()) || product.family !== "mokara-aranda");
   const showProductCode =
+    !isDriedProduct &&
     !showBouquetDetails &&
     (Boolean(product.number?.trim()) || product.family !== "mokara-aranda");
   const metaColumns = [true, showColor, showProductCode].filter(Boolean).length;
+  const showDescription =
+    (showBouquetDetails || isDriedProduct) && Boolean(product.description?.trim());
+  const descriptionParagraphs = showDescription
+    ? product.description.trim().split(/\n\n+/).filter(Boolean)
+    : [];
   const showLengthColumn = stemSizes.some((size) => Boolean(size.lengthRange?.trim()));
 
   const loosePackTotals = Object.fromEntries(
@@ -193,21 +224,54 @@ export function ProductDetail({ product }: ProductDetailProps) {
       return;
     }
 
+    if (colorOptions.length > 0 && !colorOptionId) {
+      setColorError("Please select a color.");
+      setQuantityError("");
+      setAddedNote("");
+      return;
+    }
+
+    let customColorForDraft: string | undefined;
+    if (isCustomColorSelected) {
+      const normalized = normalizeCustomColorInput(customColorInput);
+      if (!normalized.ok) {
+        setColorError(normalized.error);
+        setQuantityError("");
+        setAddedNote("");
+        return;
+      }
+      customColorForDraft = normalized.displayValue;
+    }
+
     const quantity = parsePositiveIntInput(quantityInput);
     if (quantity === null) {
       setQuantityError("Enter a whole number greater than zero.");
       return;
     }
     setQuantityError("");
+    setColorError("");
     const ok = addItem(product.slug, {
       quantity,
       packOptionId: packOptions.length ? packOptionId : undefined,
+      colorId: colorOptions.length > 0 ? colorOptionId : undefined,
+      // Only attach custom text when Custom color is selected — never send stale input.
+      customColor: isCustomColorSelected ? customColorForDraft : undefined,
     });
     if (!ok) {
       setQuantityError("Unable to add this selection. Please check options and quantity.");
+      setAddedNote("");
       return;
     }
-    setAddedNote("Added to inquiry list.");
+    if (isThaiDriedBotanicalStems) {
+      const colorLabel = isCustomColorSelected
+        ? `Custom color: ${customColorForDraft}`
+        : (colorOptions.find((color) => color.id === colorOptionId)?.label ?? "Color");
+      const packLabel =
+        packOptions.find((pack) => pack.id === packOptionId)?.label ?? "Size";
+      setAddedNote(`Added to inquiry: ${colorLabel} · ${packLabel} · Qty ${quantity}`);
+    } else {
+      setAddedNote("Added to inquiry list.");
+    }
   }
 
   return (
@@ -293,13 +357,153 @@ export function ProductDetail({ product }: ProductDetailProps) {
             ) : null}
           </dl>
 
-          {showBouquetDetails && product.description?.trim() ? (
-            <p className="product-detail-description">{product.description.trim()}</p>
+          {showDescription
+            ? descriptionParagraphs.map((paragraph) => (
+                <p key={paragraph.slice(0, 48)} className="product-detail-description">
+                  {paragraph}
+                </p>
+              ))
+            : null}
+
+          {colorOptions.length > 0 ? (
+            <fieldset className="product-detail-colorways">
+              <legend className="product-detail-section-title">
+                {isThaiDriedBotanicalStems ? "Select a color" : "Colors"}
+              </legend>
+              <div
+                className="product-detail-color-swatch-list"
+                aria-invalid={colorError ? true : undefined}
+                aria-describedby={
+                  colorError
+                    ? isThaiDriedBotanicalStems
+                      ? `${formId}-action-feedback`
+                      : `${formId}-color-error`
+                    : undefined
+                }
+              >
+                {colorOptions.map((color) => {
+                  const selected = colorOptionId === color.id;
+                  const needsEdge =
+                    color.id === "white" ||
+                    color.id === "cream" ||
+                    color.hex.toLowerCase() === "#ffffff";
+                  return (
+                    <label
+                      key={color.id}
+                      className={`product-detail-color-swatch${selected ? " is-selected" : ""}`}
+                    >
+                      <input
+                        type="radio"
+                        name={`${formId}-color`}
+                        value={color.id}
+                        checked={selected}
+                        onChange={() => {
+                          setColorOptionId(color.id);
+                          setColorError("");
+                          setAddedNote("");
+                        }}
+                      />
+                      <span
+                        className={`product-detail-color-swatch-dot${needsEdge ? " product-detail-color-swatch-dot--edged" : ""}`}
+                        style={{ backgroundColor: color.hex }}
+                        aria-hidden="true"
+                      />
+                      <span className="product-detail-color-swatch-name">{color.label}</span>
+                    </label>
+                  );
+                })}
+                {isThaiDriedBotanicalStems ? (
+                  <label
+                    className={`product-detail-color-swatch product-detail-color-swatch--custom${
+                      isCustomColorSelected ? " is-selected" : ""
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name={`${formId}-color`}
+                      value={CUSTOM_COLOR_OPTION_ID}
+                      checked={isCustomColorSelected}
+                      onChange={() => {
+                        setColorOptionId(CUSTOM_COLOR_OPTION_ID);
+                        setColorError("");
+                        setAddedNote("");
+                      }}
+                    />
+                    <span
+                      className="product-detail-color-swatch-dot product-detail-color-swatch-dot--custom"
+                      aria-hidden="true"
+                    />
+                    <span className="product-detail-color-swatch-name">Custom color</span>
+                  </label>
+                ) : null}
+              </div>
+              {isThaiDriedBotanicalStems ? (
+                <div className="product-detail-color-note">
+                  <p>
+                    Custom colors available upon request. Share your preferred color or HEX
+                    code with us.
+                  </p>
+                  <p className="product-detail-color-note-secondary">
+                    Final colors may vary slightly from digital references.
+                  </p>
+                  {isCustomColorSelected ? (
+                    <div className="product-detail-custom-color-field">
+                      <label htmlFor={`${formId}-custom-color`}>
+                        Preferred color or HEX code
+                      </label>
+                      <input
+                        id={`${formId}-custom-color`}
+                        name="customColor"
+                        type="text"
+                        value={customColorInput}
+                        maxLength={CUSTOM_COLOR_MAX_LENGTH}
+                        placeholder="e.g. Terracotta or #C66B4E"
+                        autoComplete="off"
+                        onChange={(event) => {
+                          setCustomColorInput(event.target.value);
+                          setColorError("");
+                          setAddedNote("");
+                        }}
+                        aria-invalid={colorError ? true : undefined}
+                        aria-describedby={
+                          colorError ? `${formId}-custom-color-error` : undefined
+                        }
+                      />
+                      {colorError ? (
+                        <p
+                          id={`${formId}-custom-color-error`}
+                          className="product-detail-error"
+                          role="alert"
+                        >
+                          {colorError}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+              {colorError && !isThaiDriedBotanicalStems ? (
+                <p id={`${formId}-color-error`} className="product-detail-error" role="alert">
+                  {colorError}
+                </p>
+              ) : null}
+            </fieldset>
           ) : null}
 
           <div className="product-detail-packing">
-            <h2 className="product-detail-section-title">Packing Details</h2>
-            {showBouquetDetails && bouquetTrayCounts.length > 0 ? (
+            <h2 className="product-detail-section-title">
+              {specifications.length > 0 ? "Specifications" : "Packing Details"}
+            </h2>
+            {specifications.length > 0 ? (
+              <dl>
+                {specifications.map((row) => (
+                  <div key={row.label}>
+                    <dt>{row.label}</dt>
+                    <dd>{row.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : showBouquetDetails && bouquetTrayCounts.length > 0 ? (
               <>
                 {product.bouquetPackingNote?.trim() ? (
                   <p className="product-detail-packing-note">{product.bouquetPackingNote.trim()}</p>
@@ -610,23 +814,63 @@ export function ProductDetail({ product }: ProductDetailProps) {
               ) : (
                 <>
                   {packOptions.length > 0 ? (
-                    <fieldset className="product-detail-options">
-                      <legend>Pack option</legend>
-                      <div className="product-detail-option-list">
-                        {packOptions.map((option) => (
-                          <label key={option.id} className="product-detail-option">
-                            <input
-                              type="radio"
-                              name={`${formId}-pack`}
-                              value={option.id}
-                              checked={packOptionId === option.id}
-                              onChange={() => setPackOptionId(option.id)}
-                            />
-                            <span>{option.label}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </fieldset>
+                    isThaiDriedBotanicalStems ? (
+                      <fieldset className="product-detail-bunch-sizes product-detail-options">
+                        <legend className="product-detail-section-title">
+                          Select a bunch size
+                        </legend>
+                        <div className="product-detail-bunch-sizes-options">
+                          {packOptions.map((option) => (
+                            <label
+                              key={option.id}
+                              className={`product-detail-bunch-size-option${
+                                packOptionId === option.id ? " is-selected" : ""
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name={`${formId}-pack`}
+                                value={option.id}
+                                checked={packOptionId === option.id}
+                                onChange={() => {
+                                  setPackOptionId(option.id);
+                                  setAddedNote("");
+                                }}
+                              />
+                              <span>{option.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                        <dl className="product-detail-bunch-sizes-meta">
+                          <div>
+                            <dt>Stem length</dt>
+                            <dd>100–160 cm</dd>
+                          </div>
+                          <div>
+                            <dt>Approx. stems per kg</dt>
+                            <dd>60–80</dd>
+                          </div>
+                        </dl>
+                      </fieldset>
+                    ) : (
+                      <fieldset className="product-detail-options">
+                        <legend>Pack option</legend>
+                        <div className="product-detail-option-list">
+                          {packOptions.map((option) => (
+                            <label key={option.id} className="product-detail-option">
+                              <input
+                                type="radio"
+                                name={`${formId}-pack`}
+                                value={option.id}
+                                checked={packOptionId === option.id}
+                                onChange={() => setPackOptionId(option.id)}
+                              />
+                              <span>{option.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </fieldset>
+                    )
                   ) : null}
 
                   <div className="product-detail-qty">
@@ -674,7 +918,24 @@ export function ProductDetail({ product }: ProductDetailProps) {
                   View inquiry list
                 </a>
               </div>
-              {addedNote ? (
+              {isThaiDriedBotanicalStems ? (
+                <div
+                  id={`${formId}-action-feedback`}
+                  className="product-detail-action-feedback"
+                  aria-live="polite"
+                >
+                  {colorError ? (
+                    <p className="product-detail-error" role="alert">
+                      {colorError}
+                    </p>
+                  ) : null}
+                  {!colorError && addedNote ? (
+                    <p className="product-detail-added" role="status">
+                      {addedNote}
+                    </p>
+                  ) : null}
+                </div>
+              ) : addedNote ? (
                 <p className="product-detail-added" role="status" aria-live="polite">
                   {addedNote}
                 </p>

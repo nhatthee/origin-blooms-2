@@ -5,6 +5,8 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { PENDING_CONFIRMATION } from "../data/orchids";
 import {
   groupInquiryByProduct,
+  inquiryColorLineLabel,
+  inquiryShowsColor,
   parseNonNegativeIntInput,
   totalStems,
 } from "../lib/inquiry";
@@ -138,6 +140,15 @@ export function InquiryList() {
                                 Size {item.sizeLabel}
                               </p>
                               <p className="inquiry-size-line-range">{item.lengthRange}</p>
+                            </>
+                          ) : inquiryShowsColor(item) ? (
+                            <>
+                              <p className="inquiry-size-line-label">
+                                {inquiryColorLineLabel(item)}
+                              </p>
+                              <p className="inquiry-size-line-range">
+                                Bunch size: {item.optionLabel || "—"}
+                              </p>
                             </>
                           ) : item.optionLabel ? (
                             <p className="inquiry-size-line-label">{item.optionLabel}</p>

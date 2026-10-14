@@ -32,6 +32,10 @@ export type InquiryItem = {
   sizeId?: string;
   sizeLabel?: string;
   lengthRange?: string;
+  /** Catalog color id when the line includes a color selection */
+  colorId?: string;
+  /** Catalog color label (never trust a client-supplied name) */
+  colorLabel?: string;
   quantity: number;
   unit: string;
 };
@@ -39,8 +43,74 @@ export type InquiryItem = {
 export type InquiryDraft = {
   stemSizeId?: string;
   packOptionId?: string;
+  /** Required for products that define colorOptions; use "custom" for free-text color */
+  colorId?: string;
+  /** Preferred color name or HEX when colorId is "custom" */
+  customColor?: string;
   quantity: number;
 };
+
+/** Display when a legacy dried line has no color in optionKey */
+export const INQUIRY_COLOR_UNSPECIFIED = "Not specified";
+
+/** Catalog radio value + optionKey prefix for free-text custom colors */
+export const CUSTOM_COLOR_OPTION_ID = "custom";
+export const CUSTOM_COLOR_ID_PREFIX = "custom__";
+export const CUSTOM_COLOR_MAX_LENGTH = 100;
+export const CUSTOM_COLOR_EMPTY_ERROR =
+  "Please enter your preferred color or HEX code.";
+export const CUSTOM_COLOR_HEX_ERROR =
+  "Enter a valid HEX color (#RGB or #RRGGBB).";
+
+export type CustomColorNormalizeResult =
+  | { ok: true; mergeKey: string; displayValue: string }
+  | { ok: false; error: string };
+
+/** Trim, validate, and canonicalize a custom color name or HEX. */
+export function normalizeCustomColorInput(
+  raw: string,
+): CustomColorNormalizeResult {
+  const trimmed = raw.trim().slice(0, CUSTOM_COLOR_MAX_LENGTH);
+  if (!trimmed) {
+    return { ok: false, error: CUSTOM_COLOR_EMPTY_ERROR };
+  }
+
+  if (trimmed.startsWith("#")) {
+    if (!/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(trimmed)) {
+      return { ok: false, error: CUSTOM_COLOR_HEX_ERROR };
+    }
+    const hex =
+      trimmed.length === 4
+        ? `#${trimmed[1]}${trimmed[1]}${trimmed[2]}${trimmed[2]}${trimmed[3]}${trimmed[3]}`
+        : trimmed;
+    const displayValue = hex.toUpperCase();
+    return { ok: true, mergeKey: displayValue, displayValue };
+  }
+
+  return { ok: true, mergeKey: trimmed, displayValue: trimmed };
+}
+
+export function isCustomColorId(colorId: string | undefined): boolean {
+  return Boolean(colorId?.startsWith(CUSTOM_COLOR_ID_PREFIX));
+}
+
+export function encodeCustomColorId(mergeKey: string): string {
+  return `${CUSTOM_COLOR_ID_PREFIX}${encodeURIComponent(mergeKey)}`;
+}
+
+export function decodeCustomColorId(colorId: string): string | null {
+  if (!isCustomColorId(colorId)) return null;
+  try {
+    const decoded = decodeURIComponent(colorId.slice(CUSTOM_COLOR_ID_PREFIX.length));
+    return decoded.trim() ? decoded : null;
+  } catch {
+    return null;
+  }
+}
+
+export function customColorDisplayLabel(displayValue: string): string {
+  return `Custom color: ${displayValue}`;
+}
 
 export type BouquetInquiryLineDraft = {
   code: string;
@@ -100,6 +170,53 @@ function bouquetOptionLabel(code: string, sizeLabel: string): string {
   return `${code} · Size ${sizeLabel}`;
 }
 
+/** New colored pack lines: color:{colorId}:pack:{packId} */
+export function colorPackOptionKey(colorId: string, packId: string): string {
+  return `color:${colorId}:pack:${packId}`;
+}
+
+export function parseColorPackOptionKey(
+  optionKey: string,
+): { colorId: string; packId: string } | null {
+  const match = /^color:([^:]+):pack:([^:]+)$/.exec(optionKey);
+  if (!match) return null;
+  return { colorId: match[1], packId: match[2] };
+}
+
+/** True when this line should show a Color row (including legacy unspecified). */
+export function inquiryShowsColor(item: InquiryItem): boolean {
+  return (
+    item.format === "dried" ||
+    Boolean(item.colorId) ||
+    item.optionKey.startsWith("color:")
+  );
+}
+
+export function inquiryColorDisplayLabel(item: InquiryItem): string {
+  if (item.colorLabel?.trim()) return item.colorLabel.trim();
+  if (isCustomColorId(item.colorId)) {
+    const decoded = decodeCustomColorId(item.colorId!);
+    if (decoded) return customColorDisplayLabel(decoded);
+  }
+  return INQUIRY_COLOR_UNSPECIFIED;
+}
+
+/** "Color: Orange" or "Custom color: #C66B4E" for list / email / review rows. */
+export function inquiryColorLineLabel(item: InquiryItem): string {
+  const label = inquiryColorDisplayLabel(item);
+  if (isCustomColorId(item.colorId) || label.startsWith("Custom color:")) {
+    return label;
+  }
+  return `Color: ${label}`;
+}
+
+/** Compact label for email / Excel: "Orange · 5 kg" or "Custom color: #C66B4E · 5 kg". */
+export function inquiryColorAndPackLabel(item: InquiryItem): string {
+  const pack = item.optionLabel?.trim() || "—";
+  if (!inquiryShowsColor(item)) return pack;
+  return `${inquiryColorDisplayLabel(item)} · ${pack}`;
+}
+
 export function buildInquiryItem(
   slug: string,
   draft: InquiryDraft,
@@ -115,8 +232,11 @@ export function buildInquiryItem(
   let sizeId: string | undefined;
   let sizeLabel: string | undefined;
   let lengthRange: string | undefined;
+  let colorId: string | undefined;
+  let colorLabel: string | undefined;
 
   const stemSizes = product.order.stemSizes ?? [];
+  const colorOptions = product.colorOptions ?? [];
   if (stemSizes.length > 0) {
     const size = stemSizes.find((item) => item.id === draft.stemSizeId);
     if (!size) return null;
@@ -125,11 +245,27 @@ export function buildInquiryItem(
     sizeId = size.id;
     sizeLabel = size.label;
     lengthRange = size.lengthRange;
-  } else if (product.format === "loose" && product.order.packOptions?.length) {
+  } else if (product.order.packOptions?.length) {
     const pack = product.order.packOptions.find((item) => item.id === draft.packOptionId);
     if (!pack) return null;
-    optionKey = `pack:${pack.id}`;
     optionLabel = pack.label;
+    if (colorOptions.length > 0) {
+      if (draft.colorId === CUSTOM_COLOR_OPTION_ID) {
+        const normalized = normalizeCustomColorInput(draft.customColor ?? "");
+        if (!normalized.ok) return null;
+        colorId = encodeCustomColorId(normalized.mergeKey);
+        colorLabel = customColorDisplayLabel(normalized.displayValue);
+        optionKey = colorPackOptionKey(colorId, pack.id);
+      } else {
+        const color = colorOptions.find((item) => item.id === draft.colorId);
+        if (!color) return null;
+        colorId = color.id;
+        colorLabel = color.label;
+        optionKey = colorPackOptionKey(color.id, pack.id);
+      }
+    } else {
+      optionKey = `pack:${pack.id}`;
+    }
   }
 
   return {
@@ -145,6 +281,8 @@ export function buildInquiryItem(
     sizeId,
     sizeLabel,
     lengthRange,
+    colorId,
+    colorLabel,
     quantity: draft.quantity,
     unit: product.order.unit,
   };
@@ -301,12 +439,15 @@ function normalizeStoredItem(entry: unknown): InquiryItem | null {
   if (!product) return null;
   if (!isPositiveInt(value.quantity)) return null;
 
-  const optionKey = typeof value.optionKey === "string" ? value.optionKey : "default";
+  let optionKey = typeof value.optionKey === "string" ? value.optionKey : "default";
   let optionLabel = typeof value.optionLabel === "string" ? value.optionLabel : "";
   let sizeId = typeof value.sizeId === "string" ? value.sizeId : undefined;
   let sizeLabel = typeof value.sizeLabel === "string" ? value.sizeLabel : undefined;
   let lengthRange = typeof value.lengthRange === "string" ? value.lengthRange : undefined;
+  let colorId: string | undefined;
+  let colorLabel: string | undefined;
   let code = displayProductCode(product);
+  const colorOptions = product.colorOptions ?? [];
 
   // Rehydrate size fields from product data when possible.
   if (optionKey.startsWith("size:")) {
@@ -331,7 +472,28 @@ function normalizeStoredItem(entry: unknown): InquiryItem | null {
     sizeLabel = size.label;
     lengthRange = undefined;
     optionLabel = bouquetOptionLabel(option.code, size.label);
+  } else if (optionKey.startsWith("color:")) {
+    const parsed = parseColorPackOptionKey(optionKey);
+    if (!parsed) return null;
+    const pack = product.order?.packOptions?.find((item) => item.id === parsed.packId);
+    if (!pack) return null;
+    optionLabel = pack.label;
+    if (isCustomColorId(parsed.colorId)) {
+      const decoded = decodeCustomColorId(parsed.colorId);
+      if (!decoded) return null;
+      const normalized = normalizeCustomColorInput(decoded);
+      if (!normalized.ok) return null;
+      colorId = encodeCustomColorId(normalized.mergeKey);
+      colorLabel = customColorDisplayLabel(normalized.displayValue);
+      optionKey = colorPackOptionKey(colorId, pack.id);
+    } else {
+      const color = colorOptions.find((item) => item.id === parsed.colorId);
+      if (!color) return null;
+      colorId = color.id;
+      colorLabel = color.label;
+    }
   } else if (optionKey.startsWith("pack:")) {
+    // Legacy pack-only lines (including dried without color) — do not invent a color.
     const id = optionKey.slice(5);
     const pack = product.order?.packOptions?.find((item) => item.id === id);
     if (pack) {
@@ -351,7 +513,7 @@ function normalizeStoredItem(entry: unknown): InquiryItem | null {
   if (!unit) return null;
 
   return {
-    id: typeof value.id === "string" ? value.id : inquiryLineId(slug, optionKey),
+    id: inquiryLineId(slug, optionKey),
     slug,
     name: product.name,
     image: product.image,
@@ -363,6 +525,8 @@ function normalizeStoredItem(entry: unknown): InquiryItem | null {
     sizeId,
     sizeLabel,
     lengthRange,
+    colorId,
+    colorLabel,
     quantity: value.quantity,
     unit,
   };
@@ -393,6 +557,10 @@ export function formatInquiryLine(item: InquiryItem): string {
   }
   if (item.sizeLabel && item.lengthRange) {
     return `${item.name}${codePart} — ${item.sizeLabel} (${item.lengthRange}): ${item.quantity} ${item.unit}`;
+  }
+  if (inquiryShowsColor(item)) {
+    const pack = item.optionLabel?.trim() || "—";
+    return `${item.name}${codePart} — ${inquiryColorLineLabel(item)}; Bunch size: ${pack}: ${item.quantity} ${item.unit}`;
   }
   const option = item.optionLabel ? ` — ${item.optionLabel}` : "";
   return `${item.name}${codePart}${option}: ${item.quantity} ${item.unit}`;
@@ -447,7 +615,13 @@ export function totalStems(items: InquiryItem[]): number {
 export function formatInquirySummary(items: InquiryItem[]): {
   message: string;
   quantity: string;
-  interestedIn: "Cut Orchids" | "Loose Blooms" | "Bouquets" | "All Products" | "";
+  interestedIn:
+    | "Cut Orchids"
+    | "Loose Blooms"
+    | "Bouquets"
+    | "Dried Decorative Branches"
+    | "All Products"
+    | "";
 } {
   if (items.length === 0) {
     return { message: "", quantity: "", interestedIn: "" };
@@ -467,6 +641,10 @@ export function formatInquirySummary(items: InquiryItem[]): {
       } else if (item.sizeLabel && item.lengthRange) {
         lines.push(
           `  - ${item.sizeLabel} (${item.lengthRange}): ${item.quantity} ${item.unit}`,
+        );
+      } else if (inquiryShowsColor(item)) {
+        lines.push(
+          `  - ${inquiryColorLineLabel(item)}; Bunch size: ${item.optionLabel || "—"}: ${item.quantity} ${item.unit}`,
         );
       } else if (item.optionLabel) {
         lines.push(`  - ${item.optionLabel}: ${item.quantity} ${item.unit}`);
@@ -490,16 +668,20 @@ export function formatInquirySummary(items: InquiryItem[]): {
   const hasCut = items.some((item) => item.format === "cut");
   const hasLoose = items.some((item) => item.format === "loose");
   const hasBouquet = items.some((item) => item.format === "bouquet");
-  const formatCount = Number(hasCut) + Number(hasLoose) + Number(hasBouquet);
+  const hasDried = items.some((item) => item.format === "dried");
+  const classicCount = Number(hasCut) + Number(hasLoose) + Number(hasBouquet);
+  const singleFormatCount = classicCount + Number(hasDried);
   const interestedIn =
-    formatCount === 3
+    classicCount === 3
       ? "All Products"
-      : formatCount === 1
+      : singleFormatCount === 1
         ? hasCut
           ? "Cut Orchids"
           : hasLoose
             ? "Loose Blooms"
-            : "Bouquets"
+            : hasBouquet
+              ? "Bouquets"
+              : "Dried Decorative Branches"
         : "";
 
   const quantityParts = [
@@ -572,7 +754,7 @@ export function sanitizeInquirySubmission(raw: unknown): InquiryItem[] | null {
           : NaN;
     if (!isPositiveInt(quantity)) return null;
 
-    const optionKey =
+    let optionKey =
       typeof value.optionKey === "string" && value.optionKey.trim()
         ? value.optionKey.trim()
         : "default";
@@ -581,10 +763,13 @@ export function sanitizeInquirySubmission(raw: unknown): InquiryItem[] | null {
     let sizeId: string | undefined;
     let sizeLabel: string | undefined;
     let lengthRange: string | undefined;
+    let colorId: string | undefined;
+    let colorLabel: string | undefined;
     let code = displayProductCode(product);
 
     const stemSizes = product.order.stemSizes ?? [];
     const packOptions = product.order.packOptions ?? [];
+    const colorOptions = product.colorOptions ?? [];
 
     if (hasBouquetOptions(product)) {
       const parsed = parseBouquetOptionKey(optionKey);
@@ -608,17 +793,42 @@ export function sanitizeInquirySubmission(raw: unknown): InquiryItem[] | null {
       lengthRange = size.lengthRange;
       optionLabel = sizeOptionLabel(size.label, size.lengthRange);
     } else if (product.format === "loose" || packOptions.length > 0) {
-      if (!optionKey.startsWith("pack:")) return null;
-      const id = optionKey.slice(5);
-      const pack = packOptions.find((item) => item.id === id);
-      if (pack) {
+      const colored = parseColorPackOptionKey(optionKey);
+      if (colored) {
+        const pack = packOptions.find((item) => item.id === colored.packId);
+        if (!pack) return null;
         optionLabel = pack.label;
-      } else if (id in LOOSE_BLOOM_PACK_BLOOMS) {
-        // Allow legacy loose pack lines still present in the submitted inquiry list.
-        const storedLabel =
-          typeof value.optionLabel === "string" ? value.optionLabel.trim() : "";
-        optionLabel =
-          storedLabel || LOOSE_BLOOM_LEGACY_PACK_LABELS[id] || `${id} Blooms`;
+        if (isCustomColorId(colored.colorId)) {
+          // Decode + re-validate custom text from optionKey only — never trust client labels.
+          const decoded = decodeCustomColorId(colored.colorId);
+          if (!decoded) return null;
+          const normalized = normalizeCustomColorInput(decoded);
+          if (!normalized.ok) return null;
+          colorId = encodeCustomColorId(normalized.mergeKey);
+          colorLabel = customColorDisplayLabel(normalized.displayValue);
+          optionKey = colorPackOptionKey(colorId, pack.id);
+        } else {
+          // Resolve standard color from catalog only.
+          const color = colorOptions.find((item) => item.id === colored.colorId);
+          if (!color) return null;
+          colorId = color.id;
+          colorLabel = color.label;
+        }
+      } else if (optionKey.startsWith("pack:")) {
+        // Legacy pack-only lines (including dried without color). Do not invent color.
+        const id = optionKey.slice(5);
+        const pack = packOptions.find((item) => item.id === id);
+        if (pack) {
+          optionLabel = pack.label;
+        } else if (id in LOOSE_BLOOM_PACK_BLOOMS) {
+          // Allow legacy loose pack lines still present in the submitted inquiry list.
+          const storedLabel =
+            typeof value.optionLabel === "string" ? value.optionLabel.trim() : "";
+          optionLabel =
+            storedLabel || LOOSE_BLOOM_LEGACY_PACK_LABELS[id] || `${id} Blooms`;
+        } else {
+          return null;
+        }
       } else {
         return null;
       }
@@ -645,6 +855,8 @@ export function sanitizeInquirySubmission(raw: unknown): InquiryItem[] | null {
       sizeId,
       sizeLabel,
       lengthRange,
+      colorId,
+      colorLabel,
       quantity,
       unit,
     });

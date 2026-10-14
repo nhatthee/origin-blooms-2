@@ -13,6 +13,7 @@ export const PRODUCT_CATEGORY_OVERLAY_TITLES = {
   dyed: "DYED ORCHIDS",
   bouquet: "BOUQUETS",
   loose: "LOOSE BLOOMS",
+  dried: "DYED DECORATIVE BRANCHES",
 } as const;
 
 export type ProductCategoryOverlayId = keyof typeof PRODUCT_CATEGORY_OVERLAY_TITLES;
@@ -29,6 +30,7 @@ export const PRODUCT_CATEGORY_OVERLAY_TONE: Record<
   dyed: "dyed",
   bouquet: "bouquet",
   loose: "loose",
+  dried: "dried",
 };
 
 export function productCategoryOverlayTitle(
@@ -67,7 +69,7 @@ export type ProductNavMegaItem =
       imageFit?: "cover" | "contain";
     };
 
-/** Desktop Products mega menu — order matches design reference (7 tiles, 4-column grid). */
+/** Desktop Products mega menu — 8 tiles, 4-column grid (2 rows). */
 export const PRODUCT_NAV_MEGA_ITEMS: ProductNavMegaItem[] = [
   {
     kind: "cut-family",
@@ -118,6 +120,13 @@ export const PRODUCT_NAV_MEGA_ITEMS: ProductNavMegaItem[] = [
     overlayTitle: PRODUCT_CATEGORY_OVERLAY_TITLES.loose,
     imageSrc: "/images/products/loose-blooms/loose-blooms-mega-menu-v2.png",
   },
+  {
+    kind: "format",
+    id: "dried",
+    label: "Dyed Decorative Branches",
+    overlayTitle: PRODUCT_CATEGORY_OVERLAY_TITLES.dried,
+    imageSrc: "/images/products/dried-botanical/dried-botanical-mega-menu.png",
+  },
 ];
 
 export function productNavMegaHref(item: ProductNavMegaItem): string {
@@ -132,7 +141,7 @@ export function productNavMegaItemForCatalog(
   format: ProductFormat,
   family: ProductFamily,
 ): ProductNavMegaItem | undefined {
-  if (format === "bouquet" || format === "loose") {
+  if (format === "bouquet" || format === "loose" || format === "dried") {
     return PRODUCT_NAV_MEGA_ITEMS.find(
       (item) => item.kind === "format" && item.id === format,
     );

@@ -12,6 +12,8 @@ import { buildInquiryExcelAttachment } from "../../lib/exportInquiryExcel";
 import {
   formatInquiryLine,
   formatInquirySummary,
+  inquiryColorLineLabel,
+  inquiryShowsColor,
   parseInquiryItemsFormField,
   totalsByUnit,
   type InquiryItem,
@@ -83,6 +85,9 @@ function formatItemSizeLabel(item: InquiryItem): string {
   }
   if (item.sizeLabel && item.lengthRange) {
     return `${item.sizeLabel} (${item.lengthRange})`;
+  }
+  if (inquiryShowsColor(item)) {
+    return `${inquiryColorLineLabel(item)}; Bunch size: ${item.optionLabel || "—"}`;
   }
   if (item.optionLabel) return item.optionLabel;
   return "—";

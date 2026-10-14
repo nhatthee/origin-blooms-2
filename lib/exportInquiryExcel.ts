@@ -1,6 +1,11 @@
 import ExcelJS from "exceljs";
 import { formatLabel, PENDING_CONFIRMATION } from "../data/orchids";
-import { totalsByUnit, type InquiryItem } from "./inquiry";
+import {
+  inquiryColorAndPackLabel,
+  inquiryShowsColor,
+  totalsByUnit,
+  type InquiryItem,
+} from "./inquiry";
 
 const HEADERS = [
   "Product",
@@ -45,17 +50,22 @@ export function inquiryItemsToExcelRows(items: InquiryItem[]): InquiryExcelRow[]
     .filter((item) => item.quantity > 0)
     .map((item) => {
       const isLoose = item.format === "loose";
+      const size = inquiryShowsColor(item)
+        ? inquiryColorAndPackLabel(item)
+        : isLoose
+          ? (item.optionLabel?.trim() ?? "")
+          : (item.sizeLabel?.trim() ?? "");
 
       return {
         product: item.name,
         productCode: item.code?.trim() || PENDING_CONFIRMATION,
         productType: formatLabel(item.format),
-        // Loose pack lines use confirmed pack-size labels; otherwise leave size blank.
+        // Loose pack lines use confirmed pack-size labels; colored dried use "Color · pack".
         // Bouquet lines carry size (SS–LL) but no stem-length range.
-        size: isLoose
-          ? (item.optionLabel?.trim() ?? "")
-          : (item.sizeLabel?.trim() ?? ""),
-        stemLength: isLoose || item.format === "bouquet" ? "" : stemLengthForExcel(item.lengthRange),
+        size,
+        stemLength: isLoose || item.format === "bouquet" || inquiryShowsColor(item)
+          ? ""
+          : stemLengthForExcel(item.lengthRange),
         quantity: item.quantity,
         unit: item.unit,
       };
