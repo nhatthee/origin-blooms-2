@@ -45,7 +45,7 @@ const homeStoryCards = [
     title: "ABOUT US",
     lead: "Beauty begins at the source.",
     body: "We believe a flower’s story matters as much as the moment it creates. From Thai farms to floral professionals across the United States, we give every Dendrobium orchid a new place to inspire.",
-    imageSrc: "/images/story/our-vision.png",
+    imageSrc: "/images/story/our-vision.webp",
     href: "/about-us",
   },
   {
@@ -53,7 +53,7 @@ const homeStoryCards = [
     title: "PACKING HOUSE",
     lead: "Care between the farm and the destination.",
     body: "After harvest, the orchids are selected, prepared, and packed for their journey. Each step matters: protecting the blooms, preserving their beauty, and helping them arrive ready for the hands that will create with them.",
-    imageSrc: "/images/story/packing-house.png",
+    imageSrc: "/images/story/packing-house.webp",
     href: "/packing-house",
   },
   {
@@ -61,7 +61,7 @@ const homeStoryCards = [
     title: "OUR GROWERS",
     lead: "Rooted in the people behind the flowers.",
     body: "We work closely with our Thai grower network to select orchids that meet export quality standards. Careful harvesting, handling, and packing help each fresh-cut stem arrive in beautiful condition, ready for floral work.",
-    imageSrc: "/images/story/growers.png",
+    imageSrc: "/images/story/growers.webp",
     href: "/our-growers",
   },
 ];
@@ -75,7 +75,7 @@ export default function Home() {
       <main>
         <section className="hero-truck" aria-labelledby="hero-headline">
           <Image
-            src="/images/hero/orchids.png"
+            src="/images/hero/orchids.webp"
             alt="Fresh Thai cut orchids"
             fill
             sizes="(max-width: 760px) and (orientation: portrait) 0px, 100vw"
@@ -83,7 +83,7 @@ export default function Home() {
             className="hero-truck-image hero-truck-image--desktop"
           />
           <Image
-            src="/images/hero/orchids-mobile.png"
+            src="/images/hero/orchids-mobile.webp"
             alt=""
             fill
             sizes="(max-width: 760px) and (orientation: portrait) 100vw, 0px"
@@ -138,7 +138,7 @@ export default function Home() {
         <section className="story" id="story" aria-labelledby="story-title">
           <div className="story-visual">
             <Image
-              src="/images/story/thai-orchid-growers.png"
+              src="/images/story/thai-orchid-growers.webp"
               alt="Thai orchid growers preparing fresh-cut Dendrobium orchids"
               fill
               sizes="(max-width: 760px) 100vw, 50vw"

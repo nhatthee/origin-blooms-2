@@ -11,15 +11,15 @@ export const metadata: Metadata = {
 
 const PACKING_HOUSE_IMAGES = [
   {
-    src: "/images/packing-house/packing-house-3.png",
+    src: "/images/packing-house/packing-house-3.webp",
     alt: "Fresh-cut orchids prepared and packed for their journey",
   },
   {
-    src: "/images/packing-house/packing-house-1.png",
+    src: "/images/packing-house/packing-house-1.webp",
     alt: "Packed orchid stems arranged for transport",
   },
   {
-    src: "/images/packing-house/packing-house-2.png",
+    src: "/images/packing-house/packing-house-2.webp",
     alt: "Fresh-cut orchids in packing house preparation",
   },
 ];

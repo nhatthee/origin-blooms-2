@@ -11,15 +11,15 @@ export const metadata: Metadata = {
 
 const ABOUT_STORY_IMAGES = [
   {
-    src: "/images/about/about-1.png",
+    src: "/images/about/about-1.webp",
     alt: "Fresh-cut Dendrobium orchids being prepared for export in Thailand",
   },
   {
-    src: "/images/about/about-2.png",
+    src: "/images/about/about-2.webp",
     alt: "Thai orchid packing and preparation for floral work",
   },
   {
-    src: "/images/about/about-3.png",
+    src: "/images/about/about-3.webp",
     alt: "Orchids prepared and packed at the packing house",
   },
 ];

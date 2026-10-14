@@ -111,31 +111,31 @@ function ProductCatalogView({
   const emptyResults = !emptyCategory && visible.length === 0;
   const desktopHeroByFamily = {
     dendrobium: {
-      src: "/images/products/dendrobium/dendrobium-hero.png",
+      src: "/images/products/dendrobium/dendrobium-hero.webp",
       alt: "Dendrobium orchids",
       width: 1983,
       height: 793,
     },
     "mokara-aranda": {
-      src: "/images/products/mokara/mokara-hero.png",
+      src: "/images/products/mokara/mokara-hero.webp",
       alt: "Mokara orchids",
       width: 1983,
       height: 793,
     },
     vanda: {
-      src: "/images/products/vanda/vanda-hero.png",
+      src: "/images/products/vanda/vanda-hero.webp",
       alt: "Vanda orchids",
       width: 1983,
       height: 793,
     },
     oncidium: {
-      src: "/images/products/oncidium/oncidium-hero.png",
+      src: "/images/products/oncidium/oncidium-hero.webp",
       alt: "Oncidium orchids",
       width: 1983,
       height: 793,
     },
     dyed: {
-      src: "/images/products/dyed-orchids/dyed-orchid-hero.png",
+      src: "/images/products/dyed-orchids/dyed-orchid-hero.webp",
       alt: "Dyed Orchids",
       width: 1983,
       height: 793,
@@ -143,19 +143,19 @@ function ProductCatalogView({
   } as const;
   const desktopHeroByFormat = {
     bouquet: {
-      src: "/images/products/bouquet/bouquets-hero.png",
+      src: "/images/products/bouquet/bouquets-hero.webp",
       alt: "Orchid Bouquets",
       width: 1983,
       height: 793,
     },
     loose: {
-      src: "/images/products/loose-blooms/loose-blooms-hero-v2.png",
+      src: "/images/products/loose-blooms/loose-blooms-hero-v2.webp",
       alt: "Loose Blooms",
       width: 1983,
       height: 793,
     },
     dried: {
-      src: "/images/products/dried-botanical/dried-botanical-hero.png",
+      src: "/images/products/dried-botanical/dried-botanical-hero.webp",
       alt: "Dyed Decorative Branches",
       width: 1983,
       height: 793,

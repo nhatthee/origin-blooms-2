@@ -11,15 +11,15 @@ export const metadata: Metadata = {
 
 const OUR_GROWERS_IMAGES = [
   {
-    src: "/images/growers/growers-1.png",
+    src: "/images/growers/growers-1.webp",
     alt: "Thai orchid growers tending Dendrobium plants on the farm",
   },
   {
-    src: "/images/growers/growers-2.png",
+    src: "/images/growers/growers-2.webp",
     alt: "Careful growing and handling of orchids in Thailand",
   },
   {
-    src: "/images/growers/growers-3.png",
+    src: "/images/growers/growers-3.webp",
     alt: "Fresh-cut orchids harvested with care by our growers",
   },
 ];
